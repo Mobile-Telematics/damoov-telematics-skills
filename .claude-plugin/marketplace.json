@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "damoov-telematics",
+  "description": "Self-hosted Damoov Telematics plugin marketplace.",
+  "owner": {
+    "name": "Damoov Telematics"
+  },
+  "plugins": [
+    {
+      "name": "damoov-telematics",
+      "source": "./plugins/damoov-telematics",
+      "description": "Damoov Telematics skills for mobile SDK integration, backend registration, platform APIs, trips, statistics, and testing.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Damoov Telematics"
+      },
+      "category": "development",
+      "homepage": "https://docs.damoov.com"
+    }
+  ]
+}

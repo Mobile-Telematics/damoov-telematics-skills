@@ -1,0 +1,7 @@
+interface:
+  display_name: "Damoov Trips & Statistics"
+  short_description: "Fetch trips, safety scores, and driving statistics for Damoov users"
+  default_prompt: "Use $damoov-trips-statistics-skill to fetch trips or indicators for a Damoov user."
+
+policy:
+  allow_implicit_invocation: true

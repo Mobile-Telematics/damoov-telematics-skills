@@ -1,0 +1,7 @@
+interface:
+  display_name: "Damoov Integration Testing"
+  short_description: "Create test DeviceTokens and verify Damoov API integration"
+  default_prompt: "Use $damoov-integration-testing-skill to create a test DeviceToken and verify the Damoov integration."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,13 @@
+# Repository defaults.
+* @Mobile-Telematics/skills-maintainers
+
+# Customer-facing documentation.
+/README.md @Mobile-Telematics/skills-maintainers
+/AGENTS.md @Mobile-Telematics/skills-maintainers
+/scripts/codeowners-local.sh @Mobile-Telematics/skills-maintainers
+
+# Skill groups.
+/mobile/ @Mobile-Telematics/mobile-sdk
+/backend/ @Mobile-Telematics/backend
+/platform/ @Mobile-Telematics/platform-api
+/testing/ @Mobile-Telematics/qa

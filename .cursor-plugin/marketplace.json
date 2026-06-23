@@ -1,0 +1,17 @@
+{
+  "name": "damoov-telematics",
+  "owner": {
+    "name": "Damoov Telematics"
+  },
+  "metadata": {
+    "description": "Self-hosted Damoov Telematics plugin marketplace.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "damoov-telematics",
+      "source": "./plugins/damoov-telematics",
+      "description": "Damoov Telematics skills for mobile SDK integration, backend registration, platform APIs, trips, statistics, and testing."
+    }
+  ]
+}

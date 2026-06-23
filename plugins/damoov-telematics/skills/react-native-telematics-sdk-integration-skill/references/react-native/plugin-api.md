@@ -1,0 +1,412 @@
+# React Native Plugin API Reference
+
+This reference summarizes the TypeScript API shape verified from the public `react-native-telematics` source at version `3.0.1`. Inspect the latest package and installed package before editing an app because method names and platform support can change.
+
+## Dependency
+
+Before editing `package.json`, verify the latest published package:
+
+```bash
+npm view react-native-telematics version
+```
+
+Use the app's package manager to install the latest compatible version:
+
+```bash
+yarn add react-native-telematics@latest
+```
+
+or:
+
+```bash
+npm install react-native-telematics@latest
+```
+
+When the user asks for the repository version:
+
+```bash
+git ls-remote --tags --refs https://github.com/Mobile-Telematics/telematicsSDK-demoapp-react.git
+```
+
+Use the latest semantic version tag exactly:
+
+```json
+{
+  "dependencies": {
+    "react-native-telematics": "github:Mobile-Telematics/telematicsSDK-demoapp-react#<latest-semver-tag>"
+  }
+}
+```
+
+Run the app-standard install command and rebuild native apps after adding the package.
+
+## Entry Point
+
+Import the default API and needed enums/listeners:
+
+```ts
+import { Platform } from 'react-native';
+import TelematicsSdk, {
+  AccidentDetectionSensitivity,
+  ApiLanguage,
+  TrackingMode,
+  addOnLocationChangedListener,
+  addOnTrackingStateChangedListener,
+  addOnLowPowerModeListener,
+} from 'react-native-telematics';
+```
+
+The package supports React Native New Architecture through a TurboModule and falls back to the legacy native module. If the module is missing, the JS wrapper throws an error that usually means pods/Gradle sync and a native rebuild are required.
+
+No app-side credentials are passed to the React Native plugin. The SDK setup described by this skill does not require API keys in JS, `Info.plist`, or `AndroidManifest.xml`.
+
+## Common Methods
+
+- `initializeSdk(): Promise<void>`
+- `isInitializedSdk(): Promise<boolean>`
+- `getDeviceId(): Promise<string>`
+- `setDeviceId(deviceId: string): Promise<void>`
+- `getDeviceIdRegistrationState(): Promise<DeviceIdRegistrationState>`
+- `logout(): Promise<void>`
+- `isAllRequiredPermissionsAndSensorsGranted(): Promise<boolean>`
+- `isSdkEnabled(): Promise<boolean>`
+- `isTracking(): Promise<boolean>`
+- `setEnableSdk(enable: boolean): Promise<void>`
+- `startManualTracking(): Promise<void>`
+- `startTrackAsPersistent(): Promise<void>`
+- `stopManualTracking(): Promise<void>`
+- `setMaxPersistentTrackingInterval(minutes: number): Promise<void>`
+- `getMaxPersistentTrackingInterval(): Promise<number>`
+- `setTrackingMode(trackingMode: TrackingMode): Promise<void>`
+- `getTrackingMode(): Promise<TrackingMode>`
+- `getTrackingState(): Promise<TrackingState>`
+- `uploadUnsentTrips(): Promise<void>`
+- `getUnsentTripCount(): Promise<number>`
+- `sendCustomHeartbeats(reason: string): Promise<void>`
+- `showPermissionWizard(enableAggressivePermissionsWizard: boolean, enableAggressivePermissionsWizardPage: boolean): Promise<boolean>`
+- `registerSpeedViolations({ speedLimitKmH, speedLimitTimeout }): Promise<void>`
+- `setAccidentDetectionSensitivity(accidentDetectionSensitivity): Promise<void>`
+- `enableAccidents(enable: boolean): Promise<void>`
+- `isEnabledAccidents(): Promise<boolean>`
+- `isRTLDEnabled(): Promise<boolean>`
+
+Accident detection naming:
+
+- The verified RN plugin still exposes `enableAccidents(...)` and `isEnabledAccidents()`.
+- Native iOS/Android SDK implementations use the newer names `setAccidentDetectionEnabled(...)` and `isAccidentDetectionEnabled()`.
+- Do not generate calls to the new RN names until the installed plugin source exposes them. When updating the plugin itself, add the new names and mark the old RN methods deprecated.
+
+Enums:
+
+- `TrackingMode.Standard = 0`
+- `TrackingMode.Persistent = 1`
+- `AccidentDetectionSensitivity.Normal = 0`
+- `AccidentDetectionSensitivity.Sensitive = 1`
+- `AccidentDetectionSensitivity.Tough = 2`
+- `ApiLanguage.none`, `english`, `russian`, `portuguese`, `spanish`
+
+## Platform-Specific Methods
+
+iOS-only:
+
+- `getApiLanguage()`
+- `setApiLanguage(language: ApiLanguage)`
+- `isAggressiveHeartbeats()`
+- `setAggressiveHeartbeats(enable: boolean)`
+- `setDisableTracking(value: boolean)`
+- `isDisableTracking()`
+- `isWrongAccuracyState()`
+- `requestIOSLocationAlwaysPermission()`
+- `requestIOSMotionPermission()`
+- `addOnLowPowerModeListener(...)`
+- `addOnWrongAccuracyAuthorizationListener(...)`
+- `addOnRtldColectedData(...)`
+
+Android-only:
+
+- `setAndroidAutoStartEnabled({ enable: boolean, permanent: boolean })`
+- `isAndroidAutoStartEnabled()`
+
+The native side rejects wrong-platform calls. Guard platform-specific calls with `Platform.OS`.
+
+## Listeners
+
+All listeners return subscriptions with `.remove()`:
+
+- `addOnLowPowerModeListener(({ enabled }) => void)` iOS only
+- `addOnLocationChangedListener(({ latitude, longitude }) => void)`
+- `addOnTrackingStateChangedListener((state: boolean) => void)`
+- `addOnWrongAccuracyAuthorizationListener(() => void)` iOS only
+- `addOnRtldColectedData(() => void)` iOS only
+- `addOnSpeedViolationListener((event) => void)`
+
+Example:
+
+```ts
+useEffect(() => {
+  const subs = [
+    addOnLocationChangedListener(({ latitude, longitude }) => {
+      // Update app state.
+    }),
+    addOnTrackingStateChangedListener((isTracking) => {
+      // Update app state.
+    }),
+  ];
+
+  if (Platform.OS === 'ios') {
+    subs.push(addOnLowPowerModeListener(({ enabled }) => {}));
+  }
+
+  return () => subs.forEach((subscription) => subscription.remove());
+}, []);
+```
+
+## Flow Sequences
+
+Supported app-level flows:
+
+- automatic tracking
+- standard manual tracking without future tags
+- standard manual tracking with future tags
+- app-controlled persistent manual tracking without future tags
+- app-controlled persistent manual tracking with future tags
+- one-time persistent manual tracking without future tags
+- one-time persistent manual tracking with future tags
+
+Initialize once during app startup before JS-side API usage:
+
+```ts
+await TelematicsSdk.initializeSdk();
+```
+
+Do not call `initializeSdk()` from each tracking start method. On iOS, this JS call does not replace native launch initialization. `AppDelegate` still must call `RPEntry.initializeSDK()`.
+
+The iOS implementation may be a no-op, but the method must still exist for the React Native bridge and TurboModule/codegen surface to stay consistent across platforms. Call it once from JS app startup before the facade accepts tracking commands.
+
+Device identity setup:
+
+```ts
+await TelematicsSdk.setDeviceId(deviceId);
+```
+
+Set the device ID from the app's login/session binding flow before enabling automatic SDK collection or starting manual tracking. Do not repeat this call inside every tracking start method.
+
+The device ID is a Damoov platform user identifier in GUID format, also known as DeviceToken. One DeviceToken per app user. Obtain it via `POST https://user.telematicssdk.com/v1/Registration/create` (InstanceId + InstanceKey headers): omit CustomToken to let Damoov generate a UUID, or pass CustomToken to register your own UUID. Store it in the app's backend database. Do not use a locally generated UUID without registering it on the Damoov platform first.
+
+Automatic tracking:
+
+```ts
+await TelematicsSdk.setEnableSdk(true);
+```
+
+Automatic tracking stop:
+
+```ts
+await TelematicsSdk.setEnableSdk(false);
+```
+
+Disable SDK collection while preserving device ID:
+
+```ts
+await TelematicsSdk.setEnableSdk(false);
+```
+
+Logout when clearing identity is intended:
+
+```ts
+await TelematicsSdk.logout();
+```
+
+`logout()` clears the device ID. Set the device ID again before enabling the SDK or starting tracking later.
+
+Standard manual tracking:
+
+```ts
+await TelematicsSdk.setEnableSdk(true);
+await TelematicsSdk.setTrackingMode(TrackingMode.Standard);
+await TelematicsSdk.startManualTracking();
+```
+
+Calling `startManualTracking()` or `startTrackAsPersistent()` while tracking is already active is idempotent: the SDK continues the existing track and does not start a new one. A facade may still check `isTracking()` to keep UI state clear.
+
+Standard manual stop without future tags:
+
+```ts
+await TelematicsSdk.stopManualTracking();
+await TelematicsSdk.setEnableSdk(false);
+```
+
+Standard manual tracking with future tags:
+
+```ts
+await TelematicsSdk.setEnableSdk(true);
+await TelematicsSdk.setTrackingMode(TrackingMode.Standard);
+await TelematicsSdk.addFutureTrackTag(tag, source);
+await TelematicsSdk.startManualTracking();
+```
+
+Standard manual stop with future-tag cleanup:
+
+```ts
+await TelematicsSdk.removeAllFutureTrackTags();
+await TelematicsSdk.stopManualTracking();
+await TelematicsSdk.setEnableSdk(false);
+```
+
+App-controlled persistent manual tracking:
+
+```ts
+await TelematicsSdk.setEnableSdk(true);
+await TelematicsSdk.setMaxPersistentTrackingInterval(minutes);
+await TelematicsSdk.setTrackingMode(TrackingMode.Persistent);
+await TelematicsSdk.startManualTracking();
+```
+
+App-controlled persistent stop without future tags:
+
+```ts
+await TelematicsSdk.stopManualTracking();
+await TelematicsSdk.setTrackingMode(TrackingMode.Standard);
+await TelematicsSdk.setEnableSdk(false);
+```
+
+App-controlled persistent manual tracking with future tags:
+
+```ts
+await TelematicsSdk.setEnableSdk(true);
+await TelematicsSdk.setMaxPersistentTrackingInterval(minutes);
+await TelematicsSdk.setTrackingMode(TrackingMode.Persistent);
+await TelematicsSdk.addFutureTrackTag(tag, source);
+await TelematicsSdk.startManualTracking();
+```
+
+App-controlled persistent stop with future-tag cleanup:
+
+```ts
+await TelematicsSdk.removeAllFutureTrackTags();
+await TelematicsSdk.stopManualTracking();
+await TelematicsSdk.setTrackingMode(TrackingMode.Standard);
+await TelematicsSdk.setEnableSdk(false);
+```
+
+Always restore `TrackingMode.Standard` after app-controlled persistent flows unless the product explicitly wants future automatic sessions to remain persistent.
+
+One-time persistent manual tracking:
+
+```ts
+await TelematicsSdk.setEnableSdk(true);
+await TelematicsSdk.setMaxPersistentTrackingInterval(minutes);
+await TelematicsSdk.startTrackAsPersistent();
+```
+
+One-time persistent stop without future tags:
+
+```ts
+await TelematicsSdk.stopManualTracking();
+await TelematicsSdk.setEnableSdk(false);
+```
+
+One-time persistent manual tracking with future tags:
+
+```ts
+await TelematicsSdk.setEnableSdk(true);
+await TelematicsSdk.setMaxPersistentTrackingInterval(minutes);
+await TelematicsSdk.addFutureTrackTag(tag, source);
+await TelematicsSdk.startTrackAsPersistent();
+```
+
+One-time persistent stop with future-tag cleanup:
+
+```ts
+await TelematicsSdk.removeAllFutureTrackTags();
+await TelematicsSdk.stopManualTracking();
+await TelematicsSdk.setEnableSdk(false);
+```
+
+Do not call `setTrackingMode(TrackingMode.Persistent)` before `startTrackAsPersistent()`, and do not manually restore `TrackingMode.Standard` after stopping a one-time persistent session unless the installed native API proves the bridge does not follow native SDK behavior.
+
+If the app intentionally combines manual trips with automatic tracking, keep the SDK enabled after `stopManualTracking()` and document that product behavior in the facade.
+
+## Future Tags
+
+Future tag operations are promise-based in the React Native wrapper:
+
+```ts
+const result = await TelematicsSdk.addFutureTrackTag('business');
+```
+
+The raw plugin contract is `addFutureTrackTag(tag: string, source?: string)`: `tag` is required and `source` is optional. Both values are product-defined; the SDK does not define an enum or SDK-side value restrictions. Use `tag` for the business label and `source` for the app module or user action that created it. Omit `source` when it is unavailable; do not pass an invented empty string or explicit `undefined` placeholder.
+
+Available methods:
+
+- `getFutureTrackTags() -> Promise<{ status: string; tags: Tag[] }>`
+- `addFutureTrackTag(tag: string, source?: string) -> Promise<{ status: string; tag: Tag }>`
+- `removeFutureTrackTag(tag: string, source?: string) -> Promise<{ status: string; tag: Tag }>`
+- `removeAllFutureTrackTags() -> Promise<string>`
+
+For a manually tagged trip, await the tag promise before starting tracking where product correctness depends on tags being attached to the upcoming trip.
+
+The verified React Native wrapper exposes future-tag operations for upcoming trips. It does not expose a processed-trip tag editing API in the checked plugin surface. If a product needs post-trip tag editing, inspect the latest installed plugin first and add/verify a native bridge before claiming support.
+
+## Recommended Service Shape
+
+Expose app-level flows rather than raw plugin calls from components:
+
+```ts
+export type TelematicsFlow =
+  | 'automatic'
+  | 'standardManual'
+  | 'standardManualWithFutureTag'
+  | 'appControlledPersistentManual'
+  | 'appControlledPersistentManualWithFutureTag'
+  | 'oneTimePersistentManual'
+  | 'oneTimePersistentManualWithFutureTag';
+```
+
+Recommended facade method pairs:
+
+```ts
+enableAutomaticTracking(): Promise<void>;
+disableAutomaticTracking(): Promise<void>;
+startStandardManualTracking(): Promise<void>;
+stopStandardManualTracking(): Promise<void>;
+startStandardManualTrackingWithFutureTag(tag: string, source?: string): Promise<void>;
+stopStandardManualTrackingWithFutureTag(): Promise<void>;
+startPersistentManualTracking(minutes: number): Promise<void>;
+stopPersistentManualTracking(): Promise<void>;
+startPersistentManualTrackingWithFutureTag(tag: string, minutes: number, source?: string): Promise<void>;
+stopPersistentManualTrackingWithFutureTag(): Promise<void>;
+startOneTimePersistentManualTracking(minutes: number): Promise<void>;
+stopOneTimePersistentManualTracking(): Promise<void>;
+startOneTimePersistentManualTrackingWithFutureTag(tag: string, minutes: number, source?: string): Promise<void>;
+stopOneTimePersistentManualTrackingWithFutureTag(): Promise<void>;
+```
+
+The service should:
+
+- Ensure `initializeSdk()` runs once at app startup, before the facade accepts tracking commands.
+- Expose a separate identity method that validates and sets a non-empty device ID.
+- Expose `logout()` separately for user logout/account-removal semantics.
+- Check permissions before enable/start flows.
+- Expose flow-specific stop methods instead of one shared manual stop that infers the current mode from hidden state.
+- Sequence future tag calls before manual starts.
+- Convert promise rejections into app-facing errors.
+- Keep platform-specific controls behind `Platform.OS` checks.
+
+## Testing Notes
+
+iOS Simulator and Android Emulator can exercise integration flow, permissions, and trip
+recording — but only if a location feed is active. **By default both emit no movement**, so
+without enabling simulation the SDK records no trip (`ActivityStatus` stays `"No Data"` and
+no trip appears in Datahub).
+
+- iOS Simulator: menu **Features → Location → Freeway Drive**, or play an interpolated route
+  with `xcrun simctl location booted start --speed=25 37.3324,-122.0332 37.3639,-122.0450 37.3939,-122.0800 37.4139,-122.1100`.
+- Android Emulator: generate a route as a series of `adb emu geo fix <lon> <lat>` calls
+  spaced ~2s apart, or use Extended controls → **Location** → load a GPX/KML route →
+  **Play Route**.
+- If `simctl` / `adb` reports no booted device, ask the developer to boot the device and
+  pick a preset / replay a route.
+
+HF Data (accelerometer/gyroscope) cannot be fully tested on emulators; run final background
+and sensor-heavy validation on real devices.

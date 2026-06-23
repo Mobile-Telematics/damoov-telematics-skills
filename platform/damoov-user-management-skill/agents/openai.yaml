@@ -1,0 +1,7 @@
+interface:
+  display_name: "Damoov User Management"
+  short_description: "Query, update, delete, or move Damoov users via the Management API"
+  default_prompt: "Use $damoov-user-management-skill to query, update, or delete Damoov users via the Management API."
+
+policy:
+  allow_implicit_invocation: true

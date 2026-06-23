@@ -1,0 +1,7 @@
+interface:
+  display_name: "Damoov Product Management"
+  short_description: "Manage Damoov Applications and Instances via the Accounts API"
+  default_prompt: "Use $damoov-product-management-skill to manage Damoov Applications and Instances (CRUD)."
+
+policy:
+  allow_implicit_invocation: true

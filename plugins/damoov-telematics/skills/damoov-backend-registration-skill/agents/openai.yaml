@@ -1,0 +1,7 @@
+interface:
+  display_name: "Damoov Backend Registration"
+  short_description: "Register Damoov users and issue JWTs from a backend service"
+  default_prompt: "Use $damoov-backend-registration-skill to implement Damoov user registration and JWT issuance in this backend service."
+
+policy:
+  allow_implicit_invocation: true

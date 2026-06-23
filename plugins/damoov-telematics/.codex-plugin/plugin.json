@@ -1,6 +1,6 @@
 {
   "name": "damoov-telematics",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Damoov Telematics skills for mobile SDK integration, backend registration, platform APIs, trips, statistics, and testing.",
   "author": {
     "name": "Damoov Telematics",
@@ -32,6 +32,8 @@
       "Review this Damoov mobile, backend, and API integration.",
       "Add a Damoov admin endpoint using DeviceToken safely."
     ],
-    "brandColor": "#060b22"
+    "brandColor": "#060b22",
+    "composerIcon": "./assets/logo.png",
+    "logo": "./assets/logo.png"
   }
 }

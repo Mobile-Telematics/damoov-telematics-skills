@@ -1,13 +1,14 @@
 {
   "name": "damoov-telematics",
   "displayName": "Damoov Telematics",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Damoov Telematics skills for mobile SDK integration, backend registration, platform APIs, trips, statistics, and testing.",
   "author": {
     "name": "Damoov Telematics"
   },
   "homepage": "https://docs.damoov.com",
   "repository": "https://github.com/Mobile-Telematics/damoov-telematics-skills",
+  "logo": "assets/logo.png",
   "keywords": [
     "damoov",
     "telematics",

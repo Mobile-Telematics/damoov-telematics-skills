@@ -100,16 +100,16 @@ In Claude Code, plugin skills are namespaced. Use:
 
 | Area | Skill folder | Use when |
 |---|---|---|
-| Orchestrator | `platform/damoov-telematics-skill/` | You want one entrypoint that routes Damoov tasks to the right skill. |
-| Android | `mobile/android-telematics-sdk-integration-skill/` | Native Android Kotlin SDK integration, migration, review, permissions, lifecycle, tracking, tags, and trips. |
-| iOS | `mobile/ios-telematics-sdk-integration-skill/` | Native iOS Swift SDK integration, SPM setup, lifecycle forwarding, background modes, tracking, and tags. |
-| Flutter | `mobile/flutter-telematics-sdk-integration-skill/` | Flutter plugin integration plus Android and iOS host setup. |
-| React Native | `mobile/react-native-telematics-sdk-integration-skill/` | React Native plugin integration plus Android and iOS host setup. |
-| Backend | `backend/damoov-backend-registration-skill/` | Production DeviceToken registration, InstanceKey secrecy, Admin JWT lifecycle, and secure User JWT issuance. |
-| User Management | `platform/damoov-user-management-skill/` | Find, update, delete, move users, and manage service flags such as `EnableTracking`. |
-| Product Management | `platform/damoov-product-management-skill/` | Create, read, update, and delete Applications and Instances. |
-| Trips & Statistics | `platform/damoov-trips-statistics-skill/` | Trips, trip details, safety scores, eco scores, driving statistics, daily breakdowns, and consolidated indicators. |
-| Testing | `testing/damoov-integration-testing-skill/` | Test DeviceToken creation and integration validation. |
+| Orchestrator | `skills/damoov-telematics-skill/` | You want one entrypoint that routes Damoov tasks to the right skill. |
+| Android | `skills/mobile/android-telematics-sdk-integration-skill/` | Native Android Kotlin SDK integration, migration, review, permissions, lifecycle, tracking, tags, and trips. |
+| iOS | `skills/mobile/ios-telematics-sdk-integration-skill/` | Native iOS Swift SDK integration, SPM setup, lifecycle forwarding, background modes, tracking, and tags. |
+| Flutter | `skills/mobile/flutter-telematics-sdk-integration-skill/` | Flutter plugin integration plus Android and iOS host setup. |
+| React Native | `skills/mobile/react-native-telematics-sdk-integration-skill/` | React Native plugin integration plus Android and iOS host setup. |
+| Backend | `skills/backend/damoov-backend-registration-skill/` | Production DeviceToken registration, InstanceKey secrecy, Admin JWT lifecycle, and secure User JWT issuance. |
+| User Management | `skills/backend/damoov-user-management-skill/` | Find, update, delete, move users, and manage service flags such as `EnableTracking`. |
+| Product Management | `skills/backend/damoov-product-management-skill/` | Create, read, update, and delete Applications and Instances from backend/admin tooling. |
+| Trips & Statistics | `skills/backend/damoov-trips-statistics-skill/` | Trips, trip details, safety scores, eco scores, driving statistics, daily breakdowns, and consolidated indicators. |
+| Testing | `skills/testing/damoov-integration-testing-skill/` | Test DeviceToken creation and integration validation. |
 
 ## Install All Skills Manually
 
@@ -120,26 +120,7 @@ manual skill installation.
 REPO="Mobile-Telematics/damoov-telematics-skills"
 ```
 
-Install all skills for Codex:
-
-```bash
-npx ai-agent-skills install "$REPO" --agent codex
-```
-
-Install all skills for Claude Code:
-
-```bash
-npx ai-agent-skills install "$REPO" --agent claude
-```
-
-Preview without changing local files:
-
-```bash
-npx ai-agent-skills install "$REPO" --agent codex --dry-run
-npx ai-agent-skills install "$REPO" --agent claude --dry-run
-```
-
-Alternative installer:
+Install all skills from the repository source layout:
 
 ```bash
 npx skills add "$REPO" --skill '*' --agent codex -y
@@ -155,13 +136,6 @@ npx skills add "$REPO" --list
 ## Install From A Local Clone
 
 Install from a local checkout of the public repository:
-
-```bash
-npx ai-agent-skills install . --agent codex
-npx ai-agent-skills install . --agent claude
-```
-
-Or with `skills`:
 
 ```bash
 npx skills add . --skill '*' --agent codex -y
@@ -180,9 +154,7 @@ Codex project install:
 ```bash
 SKILLS_SRC="$PWD/vendor/damoov-telematics-skills"
 mkdir -p .agents/skills
-find "$SKILLS_SRC"/backend "$SKILLS_SRC"/mobile "$SKILLS_SRC"/platform "$SKILLS_SRC"/testing \
-  -mindepth 1 -maxdepth 1 -type d -name '*-skill' \
-  -exec ln -sfn {} .agents/skills/ \;
+ln -sfn "$SKILLS_SRC/skills" .agents/skills/damoov-telematics
 ```
 
 Cursor project install:
@@ -190,9 +162,7 @@ Cursor project install:
 ```bash
 SKILLS_SRC="$PWD/vendor/damoov-telematics-skills"
 mkdir -p .cursor/skills
-find "$SKILLS_SRC"/backend "$SKILLS_SRC"/mobile "$SKILLS_SRC"/platform "$SKILLS_SRC"/testing \
-  -mindepth 1 -maxdepth 1 -type d -name '*-skill' \
-  -exec ln -sfn {} .cursor/skills/ \;
+ln -sfn "$SKILLS_SRC/skills" .cursor/skills/damoov-telematics
 ```
 
 Claude Code project install:
@@ -200,32 +170,30 @@ Claude Code project install:
 ```bash
 SKILLS_SRC="$PWD/vendor/damoov-telematics-skills"
 mkdir -p .claude/skills
-find "$SKILLS_SRC"/backend "$SKILLS_SRC"/mobile "$SKILLS_SRC"/platform "$SKILLS_SRC"/testing \
-  -mindepth 1 -maxdepth 1 -type d -name '*-skill' \
-  -exec ln -sfn {} .claude/skills/ \;
+ln -sfn "$SKILLS_SRC/skills" .claude/skills/damoov-telematics
 ```
 
-For other agents, use the equivalent project-level skills directory and symlink or copy each
-`*-skill` folder.
+For other agents, use the equivalent project-level skills directory and symlink or copy the whole
+`skills/` subtree so cross-skill relative links continue to resolve.
 
 ## Install One Skill
 
-Prefer installing all skills so `damoov-telematics-skill` can route across mobile, backend,
-platform, and testing. Install one skill only for narrow environments.
+Prefer installing all skills so `damoov-telematics-skill` can route across mobile, backend, and
+testing. Install one skill only for narrow environments.
 
 Examples:
 
 ```bash
-npx ai-agent-skills install "$REPO" --skill damoov-telematics-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill android-telematics-sdk-integration-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill ios-telematics-sdk-integration-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill flutter-telematics-sdk-integration-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill react-native-telematics-sdk-integration-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill damoov-backend-registration-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill damoov-user-management-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill damoov-product-management-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill damoov-trips-statistics-skill --agent codex
-npx ai-agent-skills install "$REPO" --skill damoov-integration-testing-skill --agent codex
+npx skills add "$REPO" --skill damoov-telematics-skill --agent codex -y
+npx skills add "$REPO" --skill android-telematics-sdk-integration-skill --agent codex -y
+npx skills add "$REPO" --skill ios-telematics-sdk-integration-skill --agent codex -y
+npx skills add "$REPO" --skill flutter-telematics-sdk-integration-skill --agent codex -y
+npx skills add "$REPO" --skill react-native-telematics-sdk-integration-skill --agent codex -y
+npx skills add "$REPO" --skill damoov-backend-registration-skill --agent codex -y
+npx skills add "$REPO" --skill damoov-user-management-skill --agent codex -y
+npx skills add "$REPO" --skill damoov-product-management-skill --agent codex -y
+npx skills add "$REPO" --skill damoov-trips-statistics-skill --agent codex -y
+npx skills add "$REPO" --skill damoov-integration-testing-skill --agent codex -y
 ```
 
 ## Update Skills
@@ -233,8 +201,8 @@ npx ai-agent-skills install "$REPO" --skill damoov-integration-testing-skill --a
 Run the install command again after pulling a newer version:
 
 ```bash
-npx ai-agent-skills install "$REPO" --agent codex
-npx ai-agent-skills install "$REPO" --agent claude
+npx skills add "$REPO" --skill '*' --agent codex -y
+npx skills add "$REPO" --skill '*' --agent claude-code -y
 ```
 
 If installed with `skills`:
@@ -295,10 +263,11 @@ Use $damoov-trips-statistics-skill to add backend endpoints for trips, safety sc
 ## Repository Layout
 
 ```text
-backend/    Backend registration, DeviceToken, hierarchy, and JWT skills
-mobile/     Mobile SDK integration skills and shared DeviceToken/RTLD references
-platform/   Orchestrator and Damoov platform API operation skills
-testing/    Test user creation and integration validation skills
+skills/
+  damoov-telematics-skill/  Top-level Damoov routing skill
+  backend/                  Backend registration, user/product management, trips, statistics, and JWT skills
+  mobile/                   Mobile SDK integration skills and shared DeviceToken/RTLD references
+  testing/                  Test user creation and integration validation skills
 ```
 
 Each skill folder contains a `SKILL.md` file. Some skills also include:
@@ -318,16 +287,16 @@ scripts/codeowners-local.sh
 Check specific paths:
 
 ```bash
-scripts/codeowners-local.sh mobile/ backend/damoov-backend-registration-skill/SKILL.md
+scripts/codeowners-local.sh skills/mobile/ skills/backend/damoov-backend-registration-skill/SKILL.md
 ```
 
 Current routing:
 
 ```text
-mobile/   -> @Mobile-Telematics/mobile-sdk
-backend/  -> @Mobile-Telematics/backend
-platform/ -> @Mobile-Telematics/platform-api
-testing/  -> @Mobile-Telematics/qa
+skills/damoov-telematics-skill/ -> @Mobile-Telematics/skills-maintainers
+skills/mobile/                  -> @Mobile-Telematics/mobile-sdk
+skills/backend/                 -> @Mobile-Telematics/backend
+skills/testing/                 -> @Mobile-Telematics/qa
 ```
 
 These owners are for review routing only. They are not plugins, skills, or invocation commands.

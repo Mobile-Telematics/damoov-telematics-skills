@@ -7,7 +7,7 @@
 /scripts/codeowners-local.sh @Mobile-Telematics/skills-maintainers
 
 # Skill groups.
-/mobile/ @Mobile-Telematics/mobile-sdk
-/backend/ @Mobile-Telematics/backend
-/platform/ @Mobile-Telematics/platform-api
-/testing/ @Mobile-Telematics/qa
+/skills/damoov-telematics-skill/ @Mobile-Telematics/skills-maintainers
+/skills/mobile/ @Mobile-Telematics/mobile-sdk
+/skills/backend/ @Mobile-Telematics/backend
+/skills/testing/ @Mobile-Telematics/qa

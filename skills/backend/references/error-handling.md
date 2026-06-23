@@ -14,10 +14,10 @@ Applies to all platform skills: user-management, trips-statistics, product-manag
 | `https://portal-apis.telematicssdk.com` | hierarchy permissions (`/v1/Permissions/Permissions`) | Admin JWT |
 
 **Admin JWT** — obtained via `POST https://user.telematicssdk.com/v1/Auth/Login` with email + password.
-See `../../skills/damoov-integration-testing-skill/references/admin-auth.md`.
+See `../../testing/damoov-integration-testing-skill/references/admin-auth.md`.
 
 **User JWT** — obtained via `POST https://user.telematicssdk.com/v1/Auth/Login` with DeviceToken + InstanceKey.
-See `../../skills/damoov-integration-testing-skill/references/registration-api.md` — "User Login" section.
+See `../../testing/damoov-integration-testing-skill/references/registration-api.md` — "User Login" section.
 
 ---
 

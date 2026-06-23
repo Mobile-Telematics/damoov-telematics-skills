@@ -13,10 +13,10 @@ This repository contains AI agent skills for developers integrating Damoov produ
 
 ## Skill Areas
 
-- `mobile/` - Telematics SDK integration for mobile applications.
-- `backend/` - Backend registration, DeviceToken, hierarchy, and JWT flows.
-- `platform/` - Damoov platform API operations.
-- `testing/` - Test user creation and integration validation flows.
+- `skills/damoov-telematics-skill/` - top-level routing skill.
+- `skills/mobile/` - Telematics SDK integration for mobile applications.
+- `skills/backend/` - Backend registration, DeviceToken, hierarchy, JWT, user management, product management, trips, and statistics flows.
+- `skills/testing/` - Test user creation and integration validation flows.
 
 ## Security Rules
 

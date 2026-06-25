@@ -1,9 +1,9 @@
 {
   "name": "damoov-telematics",
-  "version": "1.0.1",
-  "description": "Damoov Telematics skills for mobile SDK integration, backend registration, platform APIs, trips, statistics, and testing.",
+  "version": "1.0.2",
+  "description": "Damoov skills for mobile SDK integration, backend registration, platform APIs, trips, statistics, and testing.",
   "author": {
-    "name": "Damoov Telematics",
+    "name": "Damoov",
     "url": "https://damoov.com"
   },
   "homepage": "https://docs.damoov.com",
@@ -18,17 +18,17 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Damoov Telematics",
+    "displayName": "Damoov",
     "shortDescription": "Integrate Damoov mobile, backend, platform API, and testing flows.",
-    "longDescription": "Use Damoov Telematics skills to route integration tasks across mobile SDK setup, secure backend DeviceToken registration, Admin/User JWT flows, user management, Application and Instance management, trips/statistics APIs, and integration testing. Start with damoov-telematics-skill as the orchestrator.",
-    "developerName": "Damoov Telematics",
+    "longDescription": "Use Damoov skills to route integration tasks across mobile SDK setup, secure backend DeviceToken registration, Admin/User JWT flows, user management, Application and Instance management, trips/statistics APIs, and integration testing. Start with damoov-telematics-skill as the orchestrator.",
+    "developerName": "Damoov",
     "category": "Developer Tools",
     "capabilities": [
       "Write"
     ],
     "websiteURL": "https://damoov.com",
     "defaultPrompt": [
-      "integrate Damoov Telematics SDK and test the integration.",
+      "integrate Damoov SDK and test the integration.",
       "Review this Damoov mobile, backend, and API integration.",
       "Add a Damoov admin endpoint using DeviceToken safely."
     ],

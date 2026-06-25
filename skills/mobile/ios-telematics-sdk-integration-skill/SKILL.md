@@ -1,6 +1,6 @@
 ---
 name: ios-telematics-sdk-integration-skill
-description: Use when designing, integrating, migrating, reviewing, or debugging Damoov TelematicsSDK for iOS apps, especially SPM setup, service-layer architecture, RPEntry lifecycle, automatic/manual tracking flows, standard/persistent SDK tracking modes, one-time persistent manual tracking, permissions, future tags, trip tags, and replacing deprecated API from current SDK source.
+description: Use when designing, integrating, migrating, reviewing, or debugging Damoov SDK for iOS apps, especially SPM setup, service-layer architecture, RPEntry lifecycle, automatic/manual tracking flows, standard/persistent SDK tracking modes, one-time persistent manual tracking, permissions, future tags, trip tags, and replacing deprecated API from current SDK source.
 metadata:
   short-description: Damoov iOS TelematicsSDK integration
 ---

@@ -1,6 +1,6 @@
 ---
 name: react-native-telematics-sdk-integration-skill
-description: Use when designing, integrating, migrating, reviewing, or debugging the Damoov Telematics SDK React Native plugin in React Native apps, especially npm/yarn setup, react-native-telematics API usage, old/new architecture and TurboModule behavior, Android Gradle/manifest/proguard setup, iOS Podfile/SPM/Info.plist/AppDelegate/SceneDelegate setup, lifecycle forwarding, permission wizard wiring, automatic/manual tracking flows, persistent tracking, future tags, platform-specific APIs, and validation against the public React Native plugin source.
+description: Use when designing, integrating, migrating, reviewing, or debugging the Damoov SDK React Native plugin in React Native apps, especially npm/yarn setup, react-native-telematics API usage, old/new architecture and TurboModule behavior, Android Gradle/manifest/proguard setup, iOS Podfile/SPM/Info.plist/AppDelegate/SceneDelegate setup, lifecycle forwarding, permission wizard wiring, automatic/manual tracking flows, persistent tracking, future tags, platform-specific APIs, and validation against the public React Native plugin source.
 ---
 
 # React Native Telematics SDK Integration

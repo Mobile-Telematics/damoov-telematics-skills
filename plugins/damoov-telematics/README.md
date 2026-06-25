@@ -1,4 +1,4 @@
-# Damoov Telematics Plugin
+# Damoov Plugin
 
 Self-hosted plugin package for Codex, Claude Code, and Cursor.
 

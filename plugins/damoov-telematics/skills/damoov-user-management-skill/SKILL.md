@@ -1,11 +1,11 @@
 ---
 name: damoov-user-management-skill
-description: Use when managing existing Damoov telematics users through platform APIs, including finding users, updating profile or service flags, deleting users, moving users between Instances, and enabling Real-Time Location Data.
+description: Use when managing existing Damoov users through platform APIs, including finding users, updating profile or service flags, deleting users, moving users between Instances, and enabling Real-Time Location Data.
 ---
 
 # Damoov User Management Skill
 
-Use this skill when managing existing Damoov telematics users from a backend service
+Use this skill when managing existing Damoov users from a backend service
 or an automated agent. Covers finding users, updating profile and service flags,
 deleting users, and moving users between Instances.
 

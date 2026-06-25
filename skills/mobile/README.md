@@ -1,6 +1,6 @@
 # Mobile Skills
 
-Mobile skills help coding agents integrate Damoov Telematics SDK into native and cross-platform
+Mobile skills help coding agents integrate Damoov SDK into native and cross-platform
 mobile applications.
 
 ## Available Skills
@@ -31,7 +31,7 @@ npx skills add "$REPO" --skill react-native-telematics-sdk-integration-skill --a
 ## Prompt Examples
 
 ```text
-Use $android-telematics-sdk-integration-skill to integrate Damoov TelematicsSDK into this native Android Kotlin app. Primary flow should be automatic tracking.
+Use $android-telematics-sdk-integration-skill to integrate Damoov into this native Android Kotlin app. Primary flow should be automatic tracking.
 ```
 
 ```text
@@ -39,7 +39,7 @@ Use $ios-telematics-sdk-integration-skill to review this iOS app for lifecycle f
 ```
 
 ```text
-Use $flutter-telematics-sdk-integration-skill to integrate Damoov Telematics SDK Flutter plugin into this Flutter app.
+Use $flutter-telematics-sdk-integration-skill to integrate Damoov SDK Flutter plugin into this Flutter app.
 ```
 
 ```text

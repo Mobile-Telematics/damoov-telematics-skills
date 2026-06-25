@@ -1,7 +1,7 @@
 {
   "name": "damoov-telematics",
   "interface": {
-    "displayName": "Damoov Telematics"
+    "displayName": "Damoov"
   },
   "plugins": [
     {

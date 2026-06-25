@@ -1,4 +1,4 @@
 interface:
-  display_name: "Damoov Telematics"
+  display_name: "Damoov"
   short_description: "Routes Damoov integration tasks to the right skill"
-  default_prompt: "Use $damoov-telematics-skill to route and complete this Damoov integration task."
+  default_prompt: "Use $damoov-telematics-skill to integrate Damoov SDK and test the integration."

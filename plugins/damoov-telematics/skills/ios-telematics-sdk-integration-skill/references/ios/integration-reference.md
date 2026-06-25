@@ -1,4 +1,4 @@
-# Damoov TelematicsSDK iOS Integration Reference
+# Damoov SDK iOS Integration Reference
 
 Use this as a compact reference for app integration. Verify current SDK source before copying method names.
 

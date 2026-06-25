@@ -1,4 +1,4 @@
-# AGENTS.md - Public Guidance for Damoov Telematics Skills
+# AGENTS.md - Public Guidance for Damoov Skills
 
 This repository contains AI agent skills for developers integrating Damoov products.
 

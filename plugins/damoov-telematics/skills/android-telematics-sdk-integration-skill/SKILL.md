@@ -1,6 +1,6 @@
 ---
 name: android-telematics-sdk-integration-skill
-description: Use when designing, integrating, migrating, reviewing, or debugging Damoov TelematicsSDK for native Android Kotlin apps, especially Gradle/Maven setup, Application initialization, TrackingApi lifecycle, Settings builder configuration, Android runtime permissions and merged manifest checks, automatic/manual tracking flows, standard/persistent SDK tracking modes, one-time persistent manual tracking, future tags, trip APIs, receivers/listeners, and replacing deprecated Android SDK 3.x API using the SDK version resolved by Gradle.
+description: Use when designing, integrating, migrating, reviewing, or debugging Damoov for native Android Kotlin apps, especially Gradle/Maven setup, Application initialization, TrackingApi lifecycle, Settings builder configuration, Android runtime permissions and merged manifest checks, automatic/manual tracking flows, standard/persistent SDK tracking modes, one-time persistent manual tracking, future tags, trip APIs, receivers/listeners, and replacing deprecated Android SDK 3.x API using the SDK version resolved by Gradle.
 ---
 
 # Android Telematics SDK Integration

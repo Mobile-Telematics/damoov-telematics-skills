@@ -1,4 +1,4 @@
-# Damoov TelematicsSDK Android Integration Reference
+# Damoov Android Integration Reference
 
 Use this as a compact reference for Android app integration. Verify the resolved SDK dependency before copying method names.
 

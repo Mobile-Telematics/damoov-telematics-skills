@@ -1,6 +1,6 @@
-# Damoov Telematics Skills
+# Damoov Skills
 
-Agent skills for integrating Damoov Telematics SDK, backend registration flows, platform APIs,
+Agent skills for integrating Damoov SDK, backend registration flows, platform APIs,
 trip/statistics APIs, and integration testing into customer applications.
 
 These skills are written for AI coding agents such as OpenAI Codex, Claude Code, Cursor, and other
@@ -20,7 +20,7 @@ trips/statistics, or integration testing.
 
 ## Quick Start
 
-1. Install the self-hosted Damoov Telematics plugin, or install the skills manually.
+1. Install the self-hosted Damoov plugin, or install the skills manually.
 2. Ask your agent to use `damoov-telematics-skill`.
 3. Describe the integration task in normal engineering terms.
 4. Let the orchestrator route to the specific Damoov skill.
@@ -28,7 +28,7 @@ trips/statistics, or integration testing.
 Example prompts:
 
 ```text
-Use $damoov-telematics-skill to integrate Damoov Telematics into this Flutter app and tell me what backend data I need.
+Use $damoov-telematics-skill to integrate Damoov into this Flutter app and tell me what backend data I need.
 ```
 
 ```text
@@ -241,7 +241,7 @@ Which mobile stack is this: Android, iOS, Flutter, or React Native?
 Use direct prompts when you intentionally want to bypass the orchestrator:
 
 ```text
-Use $android-telematics-sdk-integration-skill to integrate Damoov TelematicsSDK into this native Android Kotlin app.
+Use $android-telematics-sdk-integration-skill to integrate Damoov into this native Android Kotlin app.
 ```
 
 ```text

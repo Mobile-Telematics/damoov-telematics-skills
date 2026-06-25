@@ -1,6 +1,6 @@
 ---
 name: flutter-telematics-sdk-integration-skill
-description: Use when designing, integrating, migrating, reviewing, or debugging the Damoov Telematics SDK Flutter plugin in Flutter apps, especially pubspec setup, TrackingApi usage, Android Gradle/manifest/proguard setup, Android TelematicsSDKApp vs custom Application initialization, iOS Info.plist/AppDelegate/SceneDelegate setup, permission wizard wiring, automatic/manual tracking flows, persistent tracking, future tags, platform-specific APIs, and validation against the Flutter plugin source.
+description: Use when designing, integrating, migrating, reviewing, or debugging the Damoov SDK Flutter plugin in Flutter apps, especially pubspec setup, TrackingApi usage, Android Gradle/manifest/proguard setup, Android TelematicsSDKApp vs custom Application initialization, iOS Info.plist/AppDelegate/SceneDelegate setup, permission wizard wiring, automatic/manual tracking flows, persistent tracking, future tags, platform-specific APIs, and validation against the Flutter plugin source.
 ---
 
 # Flutter Telematics SDK Integration

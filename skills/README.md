@@ -1,6 +1,6 @@
 # Skills
 
-This directory is the canonical runtime root for Damoov Telematics skills.
+This directory is the canonical runtime root for Damoov skills.
 
 | Area | Path | Purpose |
 |---|---|---|

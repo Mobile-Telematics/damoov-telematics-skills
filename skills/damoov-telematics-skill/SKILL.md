@@ -1,9 +1,9 @@
 ---
 name: damoov-telematics-skill
-description: Top-level Damoov Telematics router and orchestrator. Use when a customer asks for any Damoov integration, SDK setup, DeviceToken registration, backend auth flow, user management, Application or Instance management, trips/statistics analytics, integration testing, RTD/RTLD setup, troubleshooting, review, or migration and does not know which specific Damoov skill to invoke.
+description: Top-level Damoov router and orchestrator. Use when a customer asks for any Damoov integration, SDK setup, DeviceToken registration, backend auth flow, user management, Application or Instance management, trips/statistics analytics, integration testing, RTD/RTLD setup, troubleshooting, review, or migration and does not know which specific Damoov skill to invoke.
 ---
 
-# Damoov Telematics Skill
+# Damoov Skill
 
 Use this skill as the single customer-facing entry point for Damoov work. Classify the request,
 load the correct target skill or skill sequence, relay any target-skill questions to the user, and

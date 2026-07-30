@@ -12,11 +12,12 @@ Use names that match the host app conventions, but keep these responsibilities c
 
 - `TelematicsRepository`: app-facing data layer entry point for SDK initialization support, device ID setup, SDK enable/disable, low-level tracking flows, status, permission/sensor checks, SDK permissions wizard intent creation, diagnostics, notification intent, accident detection, passive detection, RTD access when requested, and heartbeats.
 - `TelematicsEventsRepository`: app-facing data layer entry point for public SDK callbacks/listeners/receivers: `TrackingStateListener`, `LocationListener`, `TrackingEventsReceiver`, and speed-violation listener/threshold controls when requested.
-- `TelematicsTagsRepository`: app-facing data layer entry point for future tags, processed-trip tags, tag callbacks, and tag receivers.
+- `TelematicsTagsRepository`: app-facing data layer entry point for backwards-compatible future tags, processed-trip tags, tag callbacks, and tag receivers.
+- `TelematicsMetadataRepository`: app-facing data layer entry point for Properties, Sub-units, and Activity Log.
 - `TelematicsTripsRepository`: app-facing data layer entry point for track list/details, unsent trips, upload, origin dictionary/change, statistics/dashboard, share/unshare, and shared-track details.
 - `TelematicsModePreferencesRepository`: app-facing preferences/settings entry point for persisted trip recording mode state, e.g. `(TripRecordMode, isActive)`. Implement it with the host app's existing DataStore, SharedPreferences, database, settings repository, or local data source.
 - `TrackingApi`: external SDK data source. It is called by the telematics repositories, not by UI or domain layers.
-- `TelematicsPermissionCoordinator`: UI/app-layer coordinator for runtime permission requests and SDK `PermissionsWizardActivity` launch/result handling. It can call repository enable methods or use cases after permissions are granted. In simple apps this may be a small Activity/Compose launcher example instead of a separate class, but generated integration must show how to launch the SDK wizard.
+- `TelematicsPermissionCoordinator`: UI/app-layer coordinator for runtime permission requests and SDK `TrackingPermissionsWizardActivity` launch/result handling. It can call repository enable methods or use cases after permissions are granted. In simple apps this may be a small Activity/Compose launcher example instead of a separate class, but generated integration must show how to launch the SDK 4.1 wizard.
 - `TrackingSessionRequest`: app-level input for starting tracking, e.g. flow, optional tag/source, optional persistent interval. Device identity is configured separately from tracking start/stop flows.
 - `TrackingFlow`: app-level flow such as automatic enablement, standard manual start/stop, app-controlled persistent manual start/stop, or one-time persistent manual start/stop, with or without tags.
 - `TelematicsError`: app-level error mapping for permission failures, invalid device ID, disabled SDK state, rejected start/stop calls, and tag processing failures.
@@ -170,8 +171,9 @@ interface TelematicsRepository {
     /** Creates the SDK permissions wizard intent for Activity Result API launch. */
     fun createPermissionsWizardIntent(
         context: Context,
-        enableAggressivePermissionsWizard: Boolean = false,
-        enableAggressivePermissionsWizardPage: Boolean = false,
+        themeMode: TrackingPermissionsWizardThemeMode = TrackingPermissionsWizardThemeMode.System,
+        blockEarlyExit: Boolean = false,
+        skipWizardPages: Boolean = false,
     ): Intent
 
     /** Sends a custom SDK heartbeat with an app-defined reason. */
@@ -189,19 +191,21 @@ class TelematicsPermissionCoordinator(
 ) {
     fun createPermissionsWizardIntent(
         context: Context,
-        enableAggressivePermissionsWizard: Boolean = false,
-        enableAggressivePermissionsWizardPage: Boolean = false,
+        themeMode: TrackingPermissionsWizardThemeMode = TrackingPermissionsWizardThemeMode.System,
+        blockEarlyExit: Boolean = false,
+        skipWizardPages: Boolean = false,
     ): Intent =
         telematicsRepository.createPermissionsWizardIntent(
             context = context,
-            enableAggressivePermissionsWizard = enableAggressivePermissionsWizard,
-            enableAggressivePermissionsWizardPage = enableAggressivePermissionsWizardPage,
+            themeMode = themeMode,
+            blockEarlyExit = blockEarlyExit,
+            skipWizardPages = skipWizardPages,
         )
 
     fun mapWizardResult(resultCode: Int): TelematicsPermissionWizardResult =
         when (resultCode) {
-            PermissionsWizardActivity.WIZARD_RESULT_ALL_GRANTED -> TelematicsPermissionWizardResult.AllGranted
-            PermissionsWizardActivity.WIZARD_RESULT_NOT_ALL_GRANTED -> TelematicsPermissionWizardResult.NotAllGranted
+            TrackingPermissionsWizardActivity.WIZARD_RESULT_ALL_GRANTED -> TelematicsPermissionWizardResult.AllGranted
+            TrackingPermissionsWizardActivity.WIZARD_RESULT_NOT_ALL_GRANTED -> TelematicsPermissionWizardResult.NotAllGranted
             else -> TelematicsPermissionWizardResult.Canceled
         }
 }
@@ -214,6 +218,39 @@ sealed interface TelematicsPermissionWizardResult {
 ```
 
 For simple apps, it is acceptable to skip a separate coordinator class and put the Activity Result launcher in Activity/Compose, but generated integration must include a concrete `createPermissionsWizardIntent(...)` call path.
+
+For SDK 4.1, the repository implementation must create the intent with `TrackingPermissionsWizardActivity.getStartWizardIntent(context, themeMode, blockEarlyExit, skipWizardPages)`. Do not use pre-4.1 wizard APIs.
+
+## Trip Metadata Repository
+
+Keep Properties, Sub-units, and Activity Log separate from `TelematicsTagsRepository`: Future Tags are deprecated for new metadata work.
+
+```kotlin
+interface TelematicsMetadataRepository {
+    /** Replaces the full trip Properties map. */
+    fun setProperties(properties: Map<String, String>): TelematicsResult
+
+    /** Returns the full persistent trip Properties map. */
+    fun getProperties(): Map<String, String>
+
+    /** Clears all persistent trip Properties. */
+    fun clearProperties(): TelematicsResult
+
+    /** Replaces the full trip Sub-units map. */
+    fun setSubUnits(subUnits: Map<String, String>): TelematicsResult
+
+    /** Returns the full persistent trip Sub-units map. */
+    fun getSubUnits(): Map<String, String>
+
+    /** Clears all persistent trip Sub-units. */
+    fun clearSubUnits(): TelematicsResult
+
+    /** Adds a business event to the currently active trip. */
+    fun addActivityLog(text: String, data: Map<String, String>): TelematicsResult
+}
+```
+
+Read before changing one key because both setters replace the complete map. Properties (1–20 entries) split an active trip on change; Sub-units (1–5 entries) do not and apply to the next trip. Keys and values must be non-empty strings of at most 255 characters. `addActivityLog` requires active tracking, accepts text of 1–1000 characters, allows 100 entries per trip, and accepts `emptyMap()` when no event data is needed.
 
 Persist app-level mode state separately from SDK state:
 
@@ -614,7 +651,7 @@ For future tags, preserve or map SDK callback/receiver statuses instead of treat
 When reviewing an integration, flag these issues:
 
 - Direct `TrackingApi.getInstance()` calls outside `TelematicsRepository` or SDK initialization startup code.
-- Missing `TelematicsEventsRepository`, `TelematicsTagsRepository`, or `TelematicsTripsRepository` in a complete SDK integration.
+- Missing `TelematicsEventsRepository`, `TelematicsTagsRepository`, `TelematicsMetadataRepository`, or `TelematicsTripsRepository` in a complete SDK integration.
 - Missing wrappers for `TrackingStateListener`, `LocationListener`, `TrackingEventsReceiver`, `SpeedViolationsListener`, `TagsProcessingListener`, or `TagsProcessingReceiver`.
 - Unnecessary `TelematicsDataSource` wrapper that only forwards to `TrackingApi` without adding another source or meaningful boundary.
 - `TelematicsService`, `TelematicsTagsService`, or `TelematicsTripsService` introduced as the default app-facing API instead of repository naming.
@@ -628,6 +665,9 @@ When reviewing an integration, flag these issues:
 - SDK initialized from an `Activity` instead of `Application.onCreate()` or app startup.
 - Runtime permissions requested after enabling the SDK.
 - Manual tracking started before required future tag completion.
+- Properties/Sub-units cleared by passing an empty map instead of the dedicated clear method.
+- Properties used for a partial update without first reading and replacing the full map.
+- Activity Log added while tracking is inactive.
 - `logout()` used when the app only meant to temporarily disable SDK collection.
 - App-controlled persistent mode not reset to `TrackingMode.Standard`.
 - One-time persistent flow implemented with deprecated `startPersistentTracking()` instead of `startTrackAsPersistent()`.

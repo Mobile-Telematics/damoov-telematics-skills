@@ -3,16 +3,18 @@
   "name": "damoov-telematics",
   "description": "Self-hosted Damoov plugin marketplace.",
   "owner": {
-    "name": "Damoov"
+    "name": "Damoov",
+    "email": "hello@damoov.com"
   },
   "plugins": [
     {
       "name": "damoov-telematics",
       "source": "./plugins/damoov-telematics",
       "description": "Damoov skills for mobile SDK integration, backend registration, platform APIs, trips, statistics, and testing.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "author": {
-        "name": "Damoov"
+        "name": "Damoov",
+        "email": "hello@damoov.com"
       },
       "category": "development",
       "homepage": "https://docs.damoov.com"

@@ -10,7 +10,40 @@ Every integration should inspect the target app for:
 
 - Repository: Maven repository `https://s3.us-east-2.amazonaws.com/android.telematics.sdk.production/` unless the app uses an internal mirror.
 - Dependency: `implementation("com.telematicssdk:tracking:<version>")`.
-- SDK levels: SDK 4.x requires minimum SDK `23`; target SDK `36` is supported by the public SDK documentation used to create this skill.
+- SDK levels: Android SDK `4.1.0` requires `compileSdk 37` or higher, has native minimum SDK `23`, and uses target SDK `36` as its verified baseline. Do not lower `compileSdk` to accommodate an older host toolchain.
+- Toolchain: Java/Kotlin target `17`; enable core-library desugaring with `com.android.tools:desugar_jdk_libs:2.1.5`.
+- API 37 compatibility: use AGP `9.1.1+` with Gradle `9.3.1+` at minimum. AGP `9.3.x` requires Gradle `9.5+`; the verified SDK baseline is AGP `9.3.0` and Gradle `9.6.1`. Check Android Studio, project plugins, and CI before upgrading the host rather than copying versions blindly.
+Use this Kotlin DSL shape when the host app needs to set the SDK 4.1 build requirements explicitly:
+
+```kotlin
+android {
+    compileSdk = 37
+
+    defaultConfig {
+        minSdk = 23
+        targetSdk = 36
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+```
+
+Adapt the syntax to Groovy or a version catalog when that is what the host already uses. Do not add a second Kotlin/AGP plugin declaration solely to copy this snippet.
+
 - Packaging excludes for Kotlin DSL:
 
 ```kotlin
@@ -32,7 +65,7 @@ android {
 -keep public class com.telematicssdk.tracking.** {*;}
 ```
 
-The public documentation used to create this skill shows SDK `4.0.0`, compile SDK `36`, min SDK `23`, and target SDK `36`. Do not downgrade or select a version from changelog entries alone. Re-check the app's resolved dependency, the user-requested version, or available Maven metadata before each dependency edit.
+The verified SDK checkpoint is `4.1.0`. Do not downgrade or select a version from changelog entries alone. Re-check the app's resolved dependency, the user-requested version, or available Maven metadata before each dependency edit.
 
 ## Manifest And Permissions
 
@@ -191,74 +224,87 @@ Use these SDK state APIs instead of inferring state with custom app-side boolean
 
 ## Permissions Wizard
 
-The SDK exposes `com.telematicssdk.tracking.utils.permissions.PermissionsWizardActivity`.
+SDK 4.1 exposes `com.telematicssdk.tracking.utils.permissions.TrackingPermissionsWizardActivity`. Do not use pre-4.1 wizard classes or parameters.
 
-Documented constants:
+Use `TrackingPermissionsWizardThemeMode.Light`, `.Dark`, or `.System` and the two boolean options:
 
-- `WIZARD_PERMISSIONS_CODE = 50005`
-- `WIZARD_RESULT_CANCELED = 0`
-- `WIZARD_RESULT_NOT_ALL_GRANTED = 1`
-- `WIZARD_RESULT_ALL_GRANTED = -1`
-- `getStartWizardIntent(context, enableAggressivePermissionsWizard, enableAggressivePermissionsWizardPage)`
+- `blockEarlyExit`: prevent the user from leaving the wizard before it completes.
+- `skipWizardPages`: omit the informational pages.
 
-Prefer the Activity Result API in new app code. If modifying legacy code that already uses `startActivityForResult`, keep the existing style unless the user requests modernization.
-
-Generated integrations must expose an app-facing way to launch the wizard. Keep SDK `Intent` creation in the repository or permission coordinator, and keep the actual launch in Activity/Compose UI:
+Both default to `false`; `System` is the default theme. Keep SDK `Intent` creation in the repository or permission coordinator, and launch it from Activity/Compose through Activity Result APIs:
 
 ```kotlin
 import android.content.Context
 import android.content.Intent
-import com.telematicssdk.tracking.utils.permissions.PermissionsWizardActivity
+import com.telematicssdk.tracking.utils.permissions.TrackingPermissionsWizardActivity
+import com.telematicssdk.tracking.utils.permissions.TrackingPermissionsWizardThemeMode
 
 interface TelematicsRepository {
-    /** Creates the SDK permissions wizard intent for Activity Result API launch. */
+    /** Creates the SDK 4.1 wizard intent for Activity Result API launch. */
     fun createPermissionsWizardIntent(
         context: Context,
-        enableAggressivePermissionsWizard: Boolean = false,
-        enableAggressivePermissionsWizardPage: Boolean = false,
+        themeMode: TrackingPermissionsWizardThemeMode = TrackingPermissionsWizardThemeMode.System,
+        blockEarlyExit: Boolean = false,
+        skipWizardPages: Boolean = false,
     ): Intent
 }
 
 class DefaultTelematicsRepository : TelematicsRepository {
     override fun createPermissionsWizardIntent(
         context: Context,
-        enableAggressivePermissionsWizard: Boolean,
-        enableAggressivePermissionsWizardPage: Boolean,
-    ): Intent =
-        PermissionsWizardActivity.getStartWizardIntent(
-            context,
-            enableAggressivePermissionsWizard,
-            enableAggressivePermissionsWizardPage,
-        )
+        themeMode: TrackingPermissionsWizardThemeMode,
+        blockEarlyExit: Boolean,
+        skipWizardPages: Boolean,
+    ): Intent = TrackingPermissionsWizardActivity.getStartWizardIntent(
+        context,
+        themeMode = themeMode,
+        blockEarlyExit = blockEarlyExit,
+        skipWizardPages = skipWizardPages,
+    )
 }
 ```
-
-For Activity-based apps:
 
 ```kotlin
 private val permissionsWizardLauncher =
     registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         when (result.resultCode) {
-            PermissionsWizardActivity.WIZARD_RESULT_ALL_GRANTED -> {
+            TrackingPermissionsWizardActivity.WIZARD_RESULT_ALL_GRANTED -> {
                 // Enable SDK or call the confirmed product workflow.
             }
-            PermissionsWizardActivity.WIZARD_RESULT_NOT_ALL_GRANTED,
-            PermissionsWizardActivity.WIZARD_RESULT_CANCELED -> {
+            TrackingPermissionsWizardActivity.WIZARD_RESULT_NOT_ALL_GRANTED,
+            TrackingPermissionsWizardActivity.WIZARD_RESULT_CANCELED -> {
                 // Forward the state to UI using the host app's error/result model.
             }
         }
     }
-
-fun openTelematicsPermissionsWizard() {
-    permissionsWizardLauncher.launch(
-        telematicsRepository.createPermissionsWizardIntent(this)
-    )
-}
 ```
 
-For Compose, create the launcher with `rememberLauncherForActivityResult(...)`, obtain `Context` from `LocalContext.current`, and launch the repository-created intent from an event handler.
+For Compose, create the launcher with `rememberLauncherForActivityResult(...)`, obtain `Context` from `LocalContext.current`, and launch the repository-created intent from an event handler. Do not hardcode wizard result text in Kotlin; get user-visible strings from the host app's `Settings`/localization layer.
 
-Do not hardcode wizard result text in Kotlin; get user-visible strings from the host app's `Settings`/localization layer.
+## Trip Metadata
+
+Use Properties for trip metadata and Sub-units for analytical classification. These methods accept flat `Map<String, String>` values; never store personally identifiable information.
+
+```kotlin
+val api = TrackingApi.getInstance()
+
+api.setProperties(mapOf("order" to "A-42"))
+val properties = api.getProperties()
+api.clearProperties()
+
+api.setSubUnits(mapOf("vehicle" to "van-7"))
+val subUnits = api.getSubUnits()
+api.clearSubUnits()
+
+api.addActivityLog("Arrived at depot", emptyMap())
+```
+
+- `setProperties` and `setSubUnits` replace the complete old map; read first when changing one key. Do not pass an empty map to clear it.
+- Properties allow 1–20 entries. A change during active tracking completes the current trip and starts the next trip with the replacement.
+- Sub-units allow 1–5 entries. Changes never restart active tracking and apply to the next trip.
+- Keys and values must be non-empty and no longer than 255 characters. Both maps clear on logout or DeviceToken change.
+- Call `addActivityLog` only while tracking is active. It neither stops nor splits tracking; text must be 1–1000 characters and a trip accepts at most 100 entries. Pass `emptyMap()` when no event data is needed.
+- Future Tags are deprecated for new metadata integrations. Keep them only for backwards-compatible flows.
 
 ## Listeners And Receivers
 

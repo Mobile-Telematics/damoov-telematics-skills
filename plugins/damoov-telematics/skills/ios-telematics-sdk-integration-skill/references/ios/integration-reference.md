@@ -16,7 +16,7 @@ Use the highest semantic version tag exactly:
 .package(url: "https://github.com/Mobile-Telematics/telematicsSDK-iOS-new-SPM", from: "<latest-spm-tag>")
 ```
 
-As of the last verification for this skill, the SPM repository reported `7.1.0` as the latest version. Do not assume this will remain true. Re-check before each dependency edit.
+As of the last verification for this skill, the released SDK checkpoint is `7.2.0`. Do not assume this will remain current; re-check before each dependency edit.
 
 Also inspect the target app lockfile (`Package.resolved`) and the runtime SDK version with `RPEntry.instance.getSdkVersion()` where runtime access is possible. Lockfiles and runtime checks tell you what is installed; SPM tags tell you what latest version to integrate.
 

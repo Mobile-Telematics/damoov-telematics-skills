@@ -1,6 +1,6 @@
 ---
 name: ios-telematics-sdk-integration-skill
-description: Use when designing, integrating, migrating, reviewing, or debugging Damoov SDK for iOS apps, especially SPM setup, service-layer architecture, RPEntry lifecycle, automatic/manual tracking flows, standard/persistent SDK tracking modes, one-time persistent manual tracking, permissions, future tags, trip tags, and replacing deprecated API from current SDK source.
+description: Use when designing, integrating, migrating, reviewing, or debugging Damoov SDK for iOS apps, especially SPM setup, service-layer architecture, RPEntry lifecycle, automatic/manual tracking flows, standard/persistent SDK tracking modes, permission wizard configuration, trip metadata (Properties, Sub-units, Activity Log), future tags, trip tags, and replacing deprecated API from current SDK source.
 metadata:
   short-description: Damoov iOS TelematicsSDK integration
 ---
@@ -44,7 +44,7 @@ If this path does not exist, inspect the SDK version installed in the target app
 
 7. Replace deprecated public API with current API. Load `references/ios/api-migration.md` when touching `RPEntry` methods or properties.
 
-8. For public SDK APIs that are common to every integration, load `references/ios/common-sdk-surface.md`. This includes iOS project setup, lifecycle wiring, `RPEntry` status/config/permission methods, delegates, `TelematicsAPIService`, and `TelematicsTagsService`.
+8. For public SDK APIs that are common to every integration, load `references/ios/common-sdk-surface.md`. This includes iOS project setup, lifecycle wiring, `RPEntry` status/config/permission methods, permission wizard, trip metadata, delegates, `TelematicsAPIService`, and `TelematicsTagsService`.
 
 9. For tracking flow sequences, SDK tracking modes, and tags, load `references/ios/integration-reference.md`.
 
@@ -74,6 +74,7 @@ If this path does not exist, inspect the SDK version installed in the target app
 - Use method-style setters/getters introduced in `RPEntry` instead of deprecated properties.
 - Put track/origin `RPEntry.instance.api` calls inside `TelematicsAPIService`.
 - Put track-tag and future-tag `RPEntry.instance.api` calls inside `TelematicsTagsService`.
+- Keep Properties, Sub-units, and Activity Log calls in `TelematicsService`: they are `RPEntry` metadata APIs, not `RPEntry.instance.api` tag APIs.
 - Do not mix network/tag/track API wrappers into `TelematicsService`.
 - Call `startTracking()`, `startTrackAsPersistent()`, and `stopTracking()` on the main thread.
 - Treat automatic/manual tracking as app-level flows; treat `.standard`/`.persistent` as SDK tracking modes configured with `setTrackingMode`.
@@ -90,6 +91,11 @@ If this path does not exist, inspect the SDK version installed in the target app
 - For every future tag, `tag` is a required `String` and `source` is an optional `String?` that may be `nil`. Do not require callers to invent an empty source value.
 - If a future tag is required for a manually started trip, add the tag and handle the completion before starting tracking; otherwise document the race.
 - Remove future tags before disabling the SDK when cleanup depends on SDK/API availability.
+- For new trip metadata integrations, use Properties or Sub-units instead of Future Tags. Future Tags remain only for backwards-compatible flows.
+- Treat Properties and Sub-units as complete replacement dictionaries. Read the current dictionary before changing one key, then submit the complete replacement. Never clear either by passing an empty dictionary; call `clearProperties()` or `clearSubUnits()`.
+- Store only flat non-PII string metadata. Properties allow 1–20 entries; Sub-units allow 1–5. Every key and value must be non-empty and at most 255 characters.
+- Changing Properties during active tracking completes the current trip and starts the next trip with the replacement metadata. Sub-units never restart active tracking; a change applies to the next trip.
+- Call `addActivityLog(text:data:)` only while tracking is active. It neither stops nor splits tracking; text must be 1–1000 characters, and a trip accepts at most 100 entries. Use an empty data dictionary when no metadata is needed.
 - For automatic tracking, assume device ID has already been configured and call `RPEntry.instance.setEnableSdk(true)`.
 - Use `setEnableSdk(false)` for temporary SDK collection disablement. Use `logout()` only for real logout/account-removal semantics because it clears the device ID.
 - Required facade methods should preserve the SDK callback signatures unless the host app explicitly prefers async overloads. Async convenience methods may be added, but they must not replace the required callback methods.
@@ -100,7 +106,7 @@ If this path does not exist, inspect the SDK version installed in the target app
 - `RPRTLDDelegate` receives Real-Time Location Data (RTLD) callbacks — live GPS position and speed streamed while a trip is active. RTLD = Real-Time Location Data, a platform service that broadcasts live location to external systems. The RTD service must be enabled at the application or instance level in Damoov Datahub before RTLD callbacks deliver data. See https://docs.damoov.com/docs/real-time-location-tracker — Full three-level enable flow (Datahub → backend user flag → SDK delegate): `../../shared/references/rtld-flow.md`.
 - Delegate methods generated by the skill should only call `print(...)`. Do not add business logic, state mutation, analytics, or UI updates to these delegate callbacks unless the user explicitly asks for it.
 - Do not assign or implement `speedLimitDelegate` unless the user explicitly requests speed-limit behavior, because it requires app-specific threshold values.
-- The iOS Permission Wizard (`RPPermissionsWizard`) walks the user through up to 4 permission steps in order: (1) Location "While Using App" → then upgrade prompt to "Always Allow"; (2) Notifications (Allow); (3) Motion & Fitness (OK); (4) Bluetooth — only shown if the app uses a BLE device, not required otherwise. The wizard UI is fully customizable via `RPSettings.returnInstance()`: colors (`wizardBgColor`, `wizardMaintextColor`, button colors), text per page (`RPPageTexts`), and app name (`appName`). Required permissions for SDK to function: Location Always + Motion & Fitness. See https://docs.damoov.com/docs/ios-sdk-asset-customisation
+- Use the iOS 7.2 `RPPermissionsWizard.instance` API and the new configuration models; do not use a pre-7.2 wizard customization API. Configure the guided wizard with `RPPermissionsWizardConfiguration`, then call `launch(completion:)`. It guides Location When In Use, Location Always, and Motion & Fitness; it shows a status page if required permissions or precise location are still missing. Configure the separate foreground missing-permissions alert with `RPPermissionsWizardMissingPermissionsAlertConfiguration` and enable it with `setMissingPermissionsAlertEnabled(_:)` only when the product wants ongoing permission reminders. See `references/ios/common-sdk-surface.md` before writing wizard UI code.
 
 ## DeviceToken Registration Flow
 
@@ -121,6 +127,7 @@ Use these docs for baseline integration behavior, but check current source befor
 
 - https://docs.damoov.com/docs/-download-the-sdk-and-install-it-in-your-environment
 - https://docs.damoov.com/docs/methods-for-ios-app
+- https://docs.damoov.com/docs/new-permission-wizard-in-ios
 - https://docs.damoov.com/docs/tracking
 - https://docs.damoov.com/docs/ios-sdk-incoming-tags
 - https://docs.damoov.com/docs/trip-tag-for-ios-app

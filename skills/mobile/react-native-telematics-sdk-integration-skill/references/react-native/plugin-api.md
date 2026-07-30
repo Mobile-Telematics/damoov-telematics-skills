@@ -1,6 +1,6 @@
 # React Native Plugin API Reference
 
-This reference summarizes the TypeScript API shape verified from the public `react-native-telematics` source at version `3.0.1`. Inspect the latest package and installed package before editing an app because method names and platform support can change.
+This reference summarizes the TypeScript API shape verified from the public `react-native-telematics` source at version `3.1.0`, with native SDK checkpoints iOS `7.2.0` and Android `4.1.0`. Version `3.1.0` requires React Native `0.86.0` or later. Inspect the latest package and installed package before editing an app because method names and platform support can change.
 
 ## Dependency
 
@@ -38,7 +38,7 @@ Use the latest semantic version tag exactly:
 }
 ```
 
-Run the app-standard install command and rebuild native apps after adding the package.
+Run the app-standard install command and rebuild native apps after adding the package. Do not bypass the `react-native >=0.86.0` peer constraint for version `3.1.0`; choose a plugin release compatible with an older React Native app instead.
 
 ## Entry Point
 
@@ -56,7 +56,7 @@ import TelematicsSdk, {
 } from 'react-native-telematics';
 ```
 
-The package supports React Native New Architecture through a TurboModule and falls back to the legacy native module. If the module is missing, the JS wrapper throws an error that usually means pods/Gradle sync and a native rebuild are required.
+The package exposes its bridge through a TurboModule. React Native `0.82+` runs only on the New Architecture, including RN `0.86+`; do not present a legacy module as a runtime fallback or set `newArchEnabled=false` as a workaround. If the module is missing, the JS wrapper throws an error that usually means pods/Gradle sync and a native rebuild are required. Verify the generated host build completes with the TurboModule enabled.
 
 No app-side credentials are passed to the React Native plugin. The SDK setup described by this skill does not require API keys in JS, `Info.plist`, or `AndroidManifest.xml`.
 
@@ -83,7 +83,14 @@ No app-side credentials are passed to the React Native plugin. The SDK setup des
 - `uploadUnsentTrips(): Promise<void>`
 - `getUnsentTripCount(): Promise<number>`
 - `sendCustomHeartbeats(reason: string): Promise<void>`
-- `showPermissionWizard(enableAggressivePermissionsWizard: boolean, enableAggressivePermissionsWizardPage: boolean): Promise<boolean>`
+- `showPermissionWizard(options?: AndroidPermissionWizardOptions): Promise<boolean>`
+- `setProperties(properties: Record<string, string>): Promise<void>`
+- `getProperties(): Promise<Record<string, string>>`
+- `clearProperties(): Promise<void>`
+- `setSubUnits(subUnits: Record<string, string>): Promise<void>`
+- `getSubUnits(): Promise<Record<string, string>>`
+- `clearSubUnits(): Promise<void>`
+- `addActivityLog(text: string, data: Record<string, string>): Promise<void>`
 - `registerSpeedViolations({ speedLimitKmH, speedLimitTimeout }): Promise<void>`
 - `setAccidentDetectionSensitivity(accidentDetectionSensitivity): Promise<void>`
 - `enableAccidents(enable: boolean): Promise<void>`
@@ -118,6 +125,9 @@ iOS-only:
 - `isWrongAccuracyState()`
 - `requestIOSLocationAlwaysPermission()`
 - `requestIOSMotionPermission()`
+- `configureIosPermissionWizard(configuration: IosPermissionWizardConfiguration)`
+- `configureIosMissingPermissionsAlert(configuration: IosMissingPermissionsAlertConfiguration)`
+- `setIosMissingPermissionsAlertEnabled(enabled: boolean)`
 - `addOnLowPowerModeListener(...)`
 - `addOnWrongAccuracyAuthorizationListener(...)`
 - `addOnRtldColectedData(...)`
@@ -161,17 +171,46 @@ useEffect(() => {
 }, []);
 ```
 
+## Permissions Wizard
+
+The two-boolean wizard overload was removed. On Android, configure the SDK 4.1 wizard at launch:
+
+```ts
+await TelematicsSdk.showPermissionWizard({
+  themeMode: 'system',
+  blockEarlyExit: false,
+  skipWizardPages: false,
+});
+```
+
+`blockEarlyExit` prevents leaving before the wizard completes. `skipWizardPages` skips informational pages. The promise resolves `true` only when all required permissions and sensors are available.
+
+On iOS, those Android options are ignored. Configure the iOS 7.2 guided wizard and optional independent foreground alert before launching:
+
+```ts
+if (Platform.OS === 'ios') {
+  await TelematicsSdk.configureIosPermissionWizard({});
+  await TelematicsSdk.configureIosMissingPermissionsAlert({
+    isBlocking: false,
+  });
+  await TelematicsSdk.setIosMissingPermissionsAlertEnabled(true);
+}
+await TelematicsSdk.showPermissionWizard();
+```
+
+Omitted iOS configuration fields retain native defaults. The guided wizard configures Location When In Use, Location Always, Motion & Fitness, status copy, and light/dark themes. The missing-permissions alert is independent; enable it only when the product needs reminders after permissions have already been requested.
+
 ## Flow Sequences
 
 Supported app-level flows:
 
 - automatic tracking
 - standard manual tracking without future tags
-- standard manual tracking with future tags
+- standard manual tracking with legacy Future Tags
 - app-controlled persistent manual tracking without future tags
-- app-controlled persistent manual tracking with future tags
+- app-controlled persistent manual tracking with legacy Future Tags
 - one-time persistent manual tracking without future tags
-- one-time persistent manual tracking with future tags
+- one-time persistent manual tracking with legacy Future Tags
 
 Initialize once during app startup before JS-side API usage:
 
@@ -327,7 +366,31 @@ Do not call `setTrackingMode(TrackingMode.Persistent)` before `startTrackAsPersi
 
 If the app intentionally combines manual trips with automatic tracking, keep the SDK enabled after `stopManualTracking()` and document that product behavior in the facade.
 
-## Future Tags
+## Trip Metadata
+
+Use Properties for trip metadata and Sub-units for analytical classification. Both are flat string records; do not include personally identifiable information.
+
+```ts
+await TelematicsSdk.setProperties({order: 'A-42'});
+const properties = await TelematicsSdk.getProperties();
+await TelematicsSdk.clearProperties();
+
+await TelematicsSdk.setSubUnits({vehicle: 'van-7'});
+const subUnits = await TelematicsSdk.getSubUnits();
+await TelematicsSdk.clearSubUnits();
+
+await TelematicsSdk.addActivityLog('Arrived at depot', {});
+```
+
+- Both setters replace the complete record. Read first before changing one key; never pass `{}` to clear it.
+- Properties allow 1–20 entries. A change during active tracking completes the current trip and starts the next trip with the replacement.
+- Sub-units allow 1–5 entries. Changes never restart active tracking and apply to the next trip.
+- Keys and values must be non-empty and no longer than 255 characters. Both records clear on logout or device-ID change.
+- Activity Log requires active tracking. It neither stops nor splits tracking; text must be 1–1000 characters, a trip allows 100 entries, and `{}` is valid when no event metadata is needed.
+
+## Deprecated Future Tags
+
+Future Tags remain for backwards compatibility. Use Properties or Sub-units for all new trip-metadata work.
 
 Future tag operations are promise-based in the React Native wrapper:
 

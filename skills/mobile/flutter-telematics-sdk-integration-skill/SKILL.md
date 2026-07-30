@@ -1,6 +1,6 @@
 ---
 name: flutter-telematics-sdk-integration-skill
-description: Use when designing, integrating, migrating, reviewing, or debugging the Damoov SDK Flutter plugin in Flutter apps, especially pubspec setup, TrackingApi usage, Android Gradle/manifest/proguard setup, Android TelematicsSDKApp vs custom Application initialization, iOS Info.plist/AppDelegate/SceneDelegate setup, permission wizard wiring, automatic/manual tracking flows, persistent tracking, future tags, platform-specific APIs, and validation against the Flutter plugin source.
+description: Use when designing, integrating, migrating, reviewing, or debugging the Damoov SDK Flutter plugin in Flutter apps, especially pubspec setup, TrackingApi usage, Android Gradle/manifest/proguard setup, Android TelematicsSDKApp vs custom Application initialization, iOS Info.plist/AppDelegate/SceneDelegate setup, configured permission wizard, automatic/manual tracking flows, persistent tracking, trip metadata (Properties, Sub-units, Activity Log), backwards-compatible future tags, platform-specific APIs, and validation against the Flutter plugin source.
 ---
 
 # Flutter Telematics SDK Integration
@@ -9,13 +9,13 @@ description: Use when designing, integrating, migrating, reviewing, or debugging
 
 Treat the Flutter plugin source and the target app's lockfiles as the source of truth. Public docs and README examples are baseline guidance; verify the plugin API from `lib/src/tracking_api.dart`, native bridge code, and installed package version before editing app code.
 
-The reference plugin source used to build this skill is the public repository [Mobile-Telematics/telematicsSDK-demoapp-flutter-](https://github.com/Mobile-Telematics/telematicsSDK-demoapp-flutter-), verified at version `1.1.3`, with Flutter `>=3.41.0`, Dart `>=3.11.0 <4.0.0`, Android native SDK `com.telematicssdk:tracking:4.0.0`, and iOS SPM SDK `7.1.0`. Treat those as API reference checkpoints, not install targets. Always verify and install the latest compatible Flutter plugin version before changing dependencies.
+The reference plugin source used to build this skill is the public repository [Mobile-Telematics/telematicsSDK-demoapp-flutter-](https://github.com/Mobile-Telematics/telematicsSDK-demoapp-flutter-), verified at version `1.2.0`, with Android native SDK `com.telematicssdk:tracking:4.1.0` and iOS SDK `7.2.0`. Plugin `1.2.0` requires Flutter `3.44.0` or later. Treat these as API and compatibility checkpoints, not install targets. Always verify and install the latest compatible Flutter plugin version before changing dependencies.
 
 ## Workflow
 
 1. Inspect the target Flutter app first:
    - `pubspec.yaml`, `pubspec.lock`, `.flutter-plugins-dependencies`.
-   - `android/build.gradle`, `android/app/build.gradle`, `android/app/src/main/AndroidManifest.xml`, proguard files, app `Application` class.
+   - `android/build.gradle`, `android/app/build.gradle`, `android/gradle/wrapper/gradle-wrapper.properties`, `android/app/src/main/AndroidManifest.xml`, proguard files, app `Application` class, AGP version, Java toolchain, `compileSdk`/`minSdk`/`targetSdk`, and core-library desugaring.
    - `ios/Podfile`, `ios/Runner/Info.plist`, `ios/Runner/AppDelegate.swift`, scene setup, deployment target.
    - Existing usage: `rg -n "telematics_sdk|TrackingApi|setDeviceID|setEnableSdk|startManualTracking|startTrackAsPersistent|setTrackingMode|FutureTrack|PermissionWizard" .`.
 
@@ -23,6 +23,7 @@ The reference plugin source used to build this skill is the public repository [M
    - Published package: query pub.dev, e.g. `curl -s https://pub.dev/api/packages/telematics_sdk` and read `latest.version`, or use `flutter pub add telematics_sdk` to resolve the latest compatible version.
    - Git dependency: query tags with `git ls-remote --tags --refs https://github.com/Mobile-Telematics/telematicsSDK-demoapp-flutter-.git` and use the latest semantic version tag exactly when the user needs the repository version.
    - Do not hardcode the verified reference version from this skill unless it is still the latest compatible version.
+   - If resolving plugin `1.2.0`, verify Flutter is `3.44.0` or later before changing Android files. For an older Flutter app, stop and select a plugin release that explicitly supports that Flutter version; do not patch plugin internals or force an unreviewed host-wide migration.
 
 3. Choose dependency style based on the app:
    - Published package: add `telematics_sdk` to `dependencies` when available in the app's package source.
@@ -37,17 +38,17 @@ The reference plugin source used to build this skill is the public repository [M
 5. Before implementing a new reusable Flutter service/facade, ask which primary tracking flow should be placed first:
    - automatic tracking
    - standard manual tracking without tags
-   - standard manual tracking with future tags
+   - standard manual tracking with legacy future tags
    - app-controlled persistent manual tracking without tags
-   - app-controlled persistent manual tracking with future tags
+   - app-controlled persistent manual tracking with legacy future tags
    - one-time persistent manual tracking without tags
-   - one-time persistent manual tracking with future tags
+   - one-time persistent manual tracking with legacy future tags
    If the user already stated the primary flow or product code makes it clear, use it without asking.
 
 6. Prefer an app-owned Dart facade around `TrackingApi` instead of calling the plugin directly from many widgets. The facade should own device ID assignment, SDK enablement, permission checks, manual tracking state, persistent mode policy, future-tag sequencing, and stream subscription lifecycle.
 
 7. Configure host platforms completely. Flutter Dart code alone is insufficient:
-   - Android must have required permissions, Gradle/repository settings, release shrink settings, proguard rules, and `tools:replace` where manifest merge requires it.
+   - Android must have required permissions, Gradle/repository settings, `compileSdk >= 37`, `minSdk >= 24`, Java 17, desugaring 2.1.5, release shrink settings, proguard rules, and `tools:replace` where manifest merge requires it. Check the generated Flutter project before choosing an AGP/Gradle upgrade.
    - iOS must have required permission keys, background modes, BG task identifiers, and `RPEntry.initializeSDK()` before plugin registration.
 
 8. Implement flow methods in Dart with the selected primary flow first and mark it:
@@ -58,11 +59,14 @@ The reference plugin source used to build this skill is the public repository [M
    - `flutter pub get`
    - `dart analyze` or `flutter analyze`
    - relevant tests with `flutter test`
-   - Android build or at least `./gradlew` task when Android files changed
+   - Android build or at least `./gradlew` task when Android files changed; first inspect the resolved SDK levels, AGP, Gradle wrapper, Java version, and `coreLibraryDesugaring` dependency
    - iOS `pod install` / `flutter build ios --no-codesign` when feasible after iOS setup changes
 
 ## Coding Rules
 
+- Plugin `1.2.0` is a Flutter `3.44.0+` integration. Do not tell an older Flutter project to use it or edit its copy in the package cache to bypass the constraint.
+- For Android SDK `4.1.0` through this plugin, keep `compileSdk >= 37`, `minSdk >= 24` for the Flutter host, target SDK `36` as the verified baseline, Java target 17, and core-library desugaring `2.1.5`. The native SDK itself has a lower `minSdk 23`, but Flutter 3.44 host apps do not support API 23.
+- API 37 requires a supported host AGP/Gradle pair: AGP `9.1.1+` with Gradle `9.3.1+` at minimum, or Gradle `9.5+` for AGP `9.3.x`. The plugin was verified with AGP `9.3.0` and Gradle `9.6.1`, using AGP built-in Kotlin with JVM target 17. These versions are not a blanket instruction to overwrite a host project's generated toolchain; if its compatible upgrade path is unavailable, use a compatible plugin release instead of lowering `compileSdk`.
 - There is no Dart-level SDK initialization call. SDK initialization is handled natively on each platform (`RPEntry.initializeSDK()` on iOS, Gradle/manifest setup on Android). No `initializeSdk()` or equivalent call exists in the `TrackingApi` Dart public API — `isInitialized()` is a read-only check, not an init call.
 - Create one `TrackingApi` ownership point per feature/service. Avoid creating new `TrackingApi()` instances in many widgets unless the app architecture already does that deliberately.
 - Subscribe to plugin streams in a lifecycle-owned object and cancel subscriptions in `dispose`/service shutdown.
@@ -70,7 +74,7 @@ The reference plugin source used to build this skill is the public repository [M
 - Treat the device ID as a Damoov-issued user identifier in GUID format, also known as DeviceToken — the same value visible as UserId in Damoov Datahub. One DeviceToken per app user. Two ways to obtain it — both via `POST https://user.telematicssdk.com/v1/Registration/create` with `InstanceId` + `InstanceKey` headers: (1) Damoov-generated: omit `CustomToken` → Damoov generates and returns a UUID; (2) App-provided: pass your own UUID as `CustomToken` body param → Damoov registers that UUID as the DeviceToken. Store the DeviceToken in the app's backend database linked to the user record. Do not use a locally generated UUID without registering it on the Damoov platform first. See https://docs.damoov.com/docs/set-up-the-sdk-login-and-api-authentication and https://docs.damoov.com/reference/create-sdk-user
 - Do not add API-key or credentials setup to app code; the Flutter plugin entry points used by this skill do not take credentials.
 - Set the device ID before enabling SDK or starting manual tracking, but do it through the separate identity method rather than inside each tracking flow method.
-- Check `isAllRequiredPermissionsAndSensorsGranted()` before enabling SDK or starting flows; use `showPermissionWizard(...)` when the product wants plugin-managed permission onboarding. When calling `showPermissionWizard(enableAggressivePermissionsWizard: ..., enableAggressivePermissionsWizardPage: ...)`: `enableAggressivePermissionsWizard: true` means the user cannot close the wizard without completing all steps; `enableAggressivePermissionsWizardPage: true` means the user cannot advance past each page without granting the current permission. On Android the wizard covers Location (Always), Physical Activity, Battery Optimization, and GPS. On iOS the wizard covers Location (Always), Notifications, Motion & Fitness, and optionally Bluetooth.
+- Check `isAllRequiredPermissionsAndSensorsGranted()` before enabling SDK or starting flows. For plugin-managed onboarding call `showPermissionWizard(android: AndroidPermissionWizardOptions(...))`; never use the removed two-boolean overload. Android options are `themeMode`, `blockEarlyExit`, and `skipWizardPages`; they are ignored on iOS. On iOS, call `configureIosPermissionWizard(...)` and, when needed, `configureIosMissingPermissionsAlert(...)` plus `setIosMissingPermissionsAlertEnabled(...)` before launching. `showPermissionWizard` confirms presentation only; consume `onPermissionWizardClose` for the final outcome.
 - For automatic tracking, assume device ID has already been configured and call `setEnableSdk(enable: true)`.
 - For standard manual tracking, ensure the device ID has already been configured, verify permissions, enable SDK collection, call `setTrackingMode(TrackingMode.standard)`, then `startManualTracking()`.
   > Flutter uses `TrackingMode.standard` / `TrackingMode.persistent` (lowercase). Android and React Native use `TrackingMode.Standard` (uppercase). Do not copy casing from other platforms.
@@ -83,6 +87,10 @@ The reference plugin source used to build this skill is the public repository [M
 - Add future tags before starting a manually tagged trip; wait for the native callback or document the race if the product accepts it.
 - For every future tag, `tag` is a required `String` and `source` is an optional `String?`. Omit `source` when it is unavailable; do not require an empty placeholder.
 - Remove future tags before disabling the SDK when cleanup depends on SDK/API availability.
+- Future Tags are deprecated for new metadata work. Use Properties for trip metadata and Sub-units for analytical classification; retain Future Tag flows only for backwards compatibility.
+- Treat Properties and Sub-units as complete replacement `Map<String, String>` values. Read before changing one key, and clear with `clearProperties()` / `clearSubUnits()`, never an empty map.
+- Store only flat non-PII strings. Properties allow 1–20 entries; Sub-units allow 1–5. Keys and values must be non-empty and at most 255 characters.
+- Properties changes during tracking complete the current trip and start the next one. Sub-units changes never restart tracking and apply to the next trip. Call `addActivityLog(text: data:)` only during active tracking; it neither stops nor splits tracking, accepts text of 1–1000 characters, allows 100 entries per trip, and accepts an empty data map.
 - Treat tagged manual flows as future-tag flows for upcoming trips. Do not imply processed-trip tag editing unless the latest installed plugin exposes that API.
 - Generated facades should expose all seven app-level flows explicitly: automatic, standard manual with and without future tags, app-controlled persistent manual with and without future tags, and one-time persistent manual with and without future tags.
 - On iOS, call iOS-only methods only behind `Platform.isIOS` or through facade methods that no-op/throw intentionally.

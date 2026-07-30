@@ -4,20 +4,22 @@ This reference covers Android host app setup for `react-native-telematics`. It i
 
 ## Plugin Native Baseline
 
-The verified plugin uses:
+The verified plugin `3.1.0` requires React Native `0.86.0` or later. Its RN 0.86 example validates:
 
-- React Native Gradle plugin `0.81.4`
+- Gradle wrapper `9.3.1`
 - Android Gradle Plugin `8.12.0`
-- Kotlin Gradle plugin `2.2.20`
-- Compile SDK `36`
+- Kotlin `2.3.21` through Kotlin BOM and stdlib
+- Compile SDK `37`
 - Min SDK `24`
 - Target SDK `36`
 - Java target `17`
-- `com.telematicssdk:tracking:4.0.0`
+- `com.telematicssdk:tracking:4.1.0`
 - Damoov Maven repository `https://s3.us-east-2.amazonaws.com/android.telematics.sdk.production/`
 - `coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.5"`
 
-Do not force these versions into the host app without checking its existing Gradle setup. Make the smallest compatible changes.
+`compileSdk 37` is mandatory: the plugin resolves `TelematicsSdk_compileSdkVersion` from root `ext` values or root Gradle properties, falls back to 37, and fails the build if the result is lower. Keep `minSdk >= 24` for React Native hosts. The source example's AGP 8.12 / Gradle 9.3.1 pair is a validated plugin/example combination, not a universal host-upgrade recipe; it may show an unsupported-compile-SDK warning. Do not copy its wrapper, AGP, Kotlin version, or warning suppression blindly into another app.
+
+React Native `0.82+` is New Architecture-only. For plugin `3.1.0`, build and validate the TurboModule on the host's generated RN 0.86+ configuration; setting `newArchEnabled=false` does not restore a legacy runtime.
 
 ## Manifest
 
@@ -42,11 +44,15 @@ The README also requires network permissions in the host app:
 
 Remove `android:allowBackup="true"` from the host application manifest if present, per plugin README.
 
+`TrackingPermissionsWizardActivity` is already declared by the plugin manifest and merged by React Native autolinking. Do not add a duplicate activity declaration to the host manifest.
+
 Use Android runtime permission requests in the app before enabling SDK or manual tracking. The Android bridge rejects `setEnableSdk` with `INVALID_PERMISSION` when `ACCESS_FINE_LOCATION` is not granted.
 
 ## Gradle
 
-The React Native package should bring its native dependency transitively. If the app needs direct native access or Gradle cannot resolve the dependency, verify that the Damoov repository is available:
+The React Native package brings `com.telematicssdk:tracking:4.1.0` and `react-android` transitively. Do not add a second Damoov dependency or pin a `react-android` artifact version in the host app just to integrate the plugin.
+
+The Damoov Maven repository must be visible in the host's active dependency-resolution scope. Add it to the app module only when that is how the project resolves repositories:
 
 ```groovy
 maven {
@@ -54,13 +60,28 @@ maven {
 }
 ```
 
-Direct native dependency, when needed:
+For projects using `RepositoriesMode.PREFER_SETTINGS`, add the same repository under `dependencyResolutionManagement.repositories` in `android/settings.gradle` instead. Do not put it only in an ignored repository block.
+
+Only if the product deliberately calls the native Android SDK outside the React Native plugin, add the native dependency after confirming it does not duplicate plugin initialization:
 
 ```groovy
-implementation "com.telematicssdk:tracking:4.0.0"
+implementation "com.telematicssdk:tracking:4.1.0"
 ```
 
-Keep Java 17 and desugaring if the app's Gradle setup requires it:
+Set SDK levels through the host's existing Gradle style. The plugin reads an optional `TelematicsSdk_compileSdkVersion` override from root `ext` or root Gradle properties, but it must resolve to 37 or higher:
+
+```groovy
+android {
+    compileSdk 37
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 36
+    }
+}
+```
+
+Keep Java 17 and desugaring:
 
 ```groovy
 android {
@@ -75,6 +96,8 @@ dependencies {
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.5"
 }
 ```
+
+The verified example resolves Kotlin `2.3.21` with the Kotlin BOM and standard library. Check the host's Kotlin dependency resolution before adding either; do not add a second Kotlin plugin or force a version that conflicts with the installed React Native build.
 
 Release settings recommended by the example:
 
@@ -134,4 +157,4 @@ yarn typescript
 cd android && ./gradlew assembleDebug
 ```
 
-For npm apps, use equivalent scripts from `package.json`. If a full Android build is too expensive locally, at minimum run package install, TypeScript/lint checks, and a Gradle sync or smallest available Gradle task.
+Before building, inspect the resolved `compileSdk`, `minSdk`, `targetSdk`, Gradle wrapper, AGP, Java/Kotlin versions, desugaring dependency, repository mode, and `newArchEnabled` setting. For npm apps, use equivalent scripts from `package.json`. If a full Android build is too expensive locally, at minimum run package install, TypeScript/lint checks, and a Gradle sync or smallest available Gradle task.

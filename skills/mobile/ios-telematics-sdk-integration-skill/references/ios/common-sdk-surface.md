@@ -407,3 +407,52 @@ Recommended service policy:
 - propagate errors instead of silently ignoring them;
 - dispatch to `MainActor` before updating UI;
 - preserve callback APIs only if the host app architecture explicitly requires them.
+
+## Trip Metadata
+
+Use Properties for trip metadata and Sub-units for analytical classification. They are `RPEntry` APIs, so keep them in `TelematicsService`, not `TelematicsTagsService`.
+
+```swift
+try RPEntry.instance.setProperties(dict: ["order": "A-42"])
+let properties = RPEntry.instance.getProperties()
+RPEntry.instance.clearProperties()
+
+try RPEntry.instance.setSubUnits(dict: ["vehicle": "van-7"])
+let subUnits = RPEntry.instance.getSubUnits()
+RPEntry.instance.clearSubUnits()
+
+try RPEntry.instance.addActivityLog(text: "Arrived at depot", data: [:])
+```
+
+- `setProperties(dict:)` and `setSubUnits(dict:)` replace the complete old dictionary; read first when changing one key. Do not pass an empty dictionary to clear it.
+- Properties allow 1–20 entries. A change during active tracking completes the current trip and starts the next trip with the replacement.
+- Sub-units allow 1–5 entries. Changes never restart active tracking and apply to the next trip.
+- Keys and values must be non-empty and no longer than 255 characters. Both dictionaries clear on logout or DeviceToken change.
+- Call `addActivityLog(text:data:)` only while tracking is active. It neither stops nor splits tracking; text must be 1–1000 characters and a trip accepts at most 100 entries. Pass `[:]` when no event data is needed.
+- Future Tags are deprecated for new metadata integrations. Keep them only for backwards-compatible flows.
+
+## Permissions Wizard
+
+Use the iOS 7.2 wizard singleton and its configuration models; do not use pre-7.2 wizard customization APIs.
+
+```swift
+let wizard = RPPermissionsWizard.instance
+wizard.setAppName("Your App")
+wizard.configure(RPPermissionsWizardConfiguration.defaultConfiguration())
+wizard.launch { granted in
+    // Continue with the product flow when appropriate.
+}
+```
+
+The guided flow presents Location When In Use, Location Always, and Motion & Fitness. If Location Always, Precise Location, or Motion & Fitness remains unavailable, it presents a final status page. Configure page text and themes with `RPPermissionsWizardConfiguration` (`locationWhenInUse`, `locationAlways`, `motion`, `status`, `lightTheme`, `darkTheme`).
+
+Configure the independent foreground missing-permissions alert separately:
+
+```swift
+wizard.configureMissingPermissionsAlert(
+    RPPermissionsWizardMissingPermissionsAlertConfiguration.defaultConfiguration()
+)
+wizard.setMissingPermissionsAlertEnabled(true)
+```
+
+Enable this alert only when the product needs ongoing reminders after Location and Motion have already been requested. It is evaluated when the app enters foreground; configure its copy, blocking behavior, and light/dark themes through `RPPermissionsWizardMissingPermissionsAlertConfiguration`.

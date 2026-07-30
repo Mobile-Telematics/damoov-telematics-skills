@@ -18,7 +18,7 @@ dependencies {
 }
 ```
 
-Published install docs show dependency examples with `4.0.0`, while public changelog pages may show a different latest entry. Do not infer the dependency version from changelog order alone. Re-check the app dependency, the user-requested version, or available Maven metadata before changing a real app.
+The verified SDK checkpoint is `4.1.0`. Do not infer a dependency version from changelog order alone; re-check the app dependency, the user-requested version, or available Maven metadata before changing a real app.
 
 ## Required Android Configuration
 

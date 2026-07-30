@@ -1,6 +1,6 @@
 ---
 name: android-telematics-sdk-integration-skill
-description: Use when designing, integrating, migrating, reviewing, or debugging Damoov for native Android Kotlin apps, especially Gradle/Maven setup, Application initialization, TrackingApi lifecycle, Settings builder configuration, Android runtime permissions and merged manifest checks, automatic/manual tracking flows, standard/persistent SDK tracking modes, one-time persistent manual tracking, future tags, trip APIs, receivers/listeners, and replacing deprecated Android SDK 3.x API using the SDK version resolved by Gradle.
+description: Use when designing, integrating, migrating, reviewing, or debugging Damoov for native Android Kotlin apps, especially Gradle/Maven setup, Application initialization, TrackingApi lifecycle, Settings builder configuration, configured permission wizard, Android runtime permissions and merged manifest checks, automatic/manual tracking flows, standard/persistent SDK tracking modes, trip metadata (Properties, Sub-units, Activity Log), future tags, trip APIs, receivers/listeners, and replacing deprecated Android SDK 3.x API using the SDK version resolved by Gradle.
 ---
 
 # Android Telematics SDK Integration
@@ -15,11 +15,11 @@ Do not ask the user for a local SDK source checkout and do not include steps tha
 ## Workflow
 
 1. Inspect the target Android app first:
-   - Gradle shape: root `settings.gradle(.kts)`, app `build.gradle(.kts)`, version catalogs, dependency repositories, product flavors, min/target/compile SDK.
+   - Gradle shape: root `settings.gradle(.kts)`, app `build.gradle(.kts)`, version catalogs, dependency repositories, product flavors, `compileSdk`/`minSdk`/`targetSdk`, AGP version, Gradle wrapper, Java toolchain, and core-library desugaring.
    - Entry points: `Application`, launch `Activity`, DI startup, WorkManager/custom initializers.
    - Manifest: app manifest and merged manifest for SDK permissions, services, receivers, foreground service type, provider authorities, and any `tools:node` or `maxSdkVersion` overrides.
    - Permissions: runtime request flow for location, background location, activity recognition, notifications, battery optimization, and exact alarm policy.
-   - Existing SDK usage: `rg -n "TrackingApi|Settings\\(|setDeviceID|setDeviceToken|setEnableSdk|startTracking|startPersistentTracking|startTrackAsPersistent|TrackingMode|addFutureTrackTag|registerTrackingEventsReceiver|TagsProcessingReceiver|TrackingStateListener"`.
+   - Existing SDK usage: `rg -n "TrackingApi|Settings\\(|setDeviceID|setDeviceToken|setEnableSdk|startTracking|startPersistentTracking|startTrackAsPersistent|TrackingMode|setProperties|getProperties|clearProperties|setSubUnits|getSubUnits|clearSubUnits|addActivityLog|addFutureTrackTag|registerTrackingEventsReceiver|TagsProcessingReceiver|TrackingStateListener"`.
 
 2. Use Maven/Gradle dependency integration for host apps. Load `references/android/common-sdk-surface.md` before editing dependency setup.
 
@@ -28,6 +28,10 @@ Do not ask the user for a local SDK source checkout and do not include steps tha
    - Check the version resolved by Gradle dependency reports, lockfiles, version catalogs, or app build files.
    - Do not choose a dependency version from the public changelog alone. The changelog is release notes, not a Maven artifact index, and may lag behind or diverge from install docs.
    - If adding the SDK to an app that has no existing dependency and the user did not specify a version, ask which SDK version to use or verify available Maven versions through Gradle/Maven metadata before editing the build.
+
+   For Android SDK `4.1.0`, also verify the build contract before changing source code: `compileSdk` must be `37` or higher, the native SDK floor is `minSdk 23`, the verified target baseline is `36`, Java/Kotlin bytecode targets are `17`, and core-library desugaring uses `com.android.tools:desugar_jdk_libs:2.1.5`. Never lower `compileSdk` to make an older host toolchain build.
+
+   API 37 requires a supported AGP/Gradle pair. Use AGP `9.1.1+` with Gradle `9.3.1+` at minimum; when the host chooses AGP `9.3.x`, use Gradle `9.5+` (the verified SDK build baseline is AGP `9.3.0` with Gradle `9.6.1`). Do not state that an older AGP is generically supported just because it happens to compile one app. Resolve upgrades against the host app's Android Studio, plugins, and CI constraints.
 
 4. Inspect the resolved SDK API before relying on public APIs. Prefer downloaded sources jars when Gradle provides them; otherwise inspect AAR/classes with IDE symbol resolution, `javap`, Kotlin metadata-aware tooling, or generated API docs. Use the reference files as guidance, not proof that every method exists in the app's resolved version.
 
@@ -52,7 +56,8 @@ Do not ask the user for a local SDK source checkout and do not include steps tha
 10. Implement repositories for all SDK API groups, not only tracking flows:
     - `TelematicsRepository` for initialization/configuration helpers, SDK enablement, low-level tracking flows, status, permissions/sensors, SDK permissions wizard intent creation, diagnostics, notification intent, accident detection, passive detection, RTD (Real-Time Location Data) access when requested, and heartbeats. RTD is a platform service that streams live GPS position and speed; it must be enabled at application or instance level in Damoov Datahub before RTD callbacks deliver data. See https://docs.damoov.com/docs/real-time-location-tracker — Full three-level enable flow (Datahub → backend user flag → SDK callback): `../../shared/references/rtld-flow.md`.
     - `TelematicsEventsRepository` for public SDK callbacks/listeners/receivers: tracking state callback, location listener, tracking events receiver, and speed-violation controls/callbacks when requested.
-    - `TelematicsTagsRepository` for future tags, processed-trip tags, tag callbacks, and tag receivers.
+    - `TelematicsTagsRepository` for backwards-compatible future tags, processed-trip tags, tag callbacks, and tag receivers.
+    - `TelematicsMetadataRepository` for Properties, Sub-units, and Activity Log; do not place these `TrackingApi` calls in the tags repository.
     - `TelematicsTripsRepository` for track list/details, unsent trips, upload, origin dictionary/change, statistics/dashboard, share/unshare, and shared-track details.
     Keep `TrackingApi` as the immediate external data source. Do not create extra SDK DataSource wrappers by default.
 
@@ -88,11 +93,13 @@ Do not ask the user for a local SDK source checkout and do not include steps tha
 12. Implement repositories with all supported flows and public SDK method groups. In `TelematicsRepository`, order tracking methods so the user's primary flow appears first. Add a small preferences/local settings abstraction for telematics mode state when needed, using the host app's existing DataStore, SharedPreferences, database, or settings repository. Keep changes outside the integration surface minimal. Do not add dependencies beyond the SDK and existing app stack unless the user explicitly approves.
 
 13. Validate with the narrowest available check:
+    - Before compiling, verify the resolved `compileSdk`, AGP, Gradle wrapper, Java version, and desugaring dependency. If any differs from the SDK 4.1 contract, explain the compatibility decision before changing it.
     - Prefer Gradle compile for the affected module, e.g. `./gradlew :app:compileDebugKotlin` or the app's actual variant.
     - If compile is too expensive or unavailable, run focused static checks with `rg` for deprecated symbols and explain the limit.
 
 ## Coding Rules
 
+- For Android SDK `4.1.0`, keep host `compileSdk >= 37`; do not propose a lower SDK level as a workaround for an old AGP or Gradle wrapper. The native SDK can run with `minSdk 23`, but this is not a license to lower a framework host's own minimum SDK.
 - Do not hardcode user-visible text strings in generated app code. Store text in the host app's `Settings` mechanism or existing localization/configuration layer and read it from there.
 - Initialize `TrackingApi.getInstance()` once from the real `Application.onCreate()` with an application context.
 - Use `Settings()` builder functions for SDK 4.x: `accuracy(...)`, `stopTrackingTimeout(...)`, `autoStartOn(...)`, `adOn(...)`, and `passiveDetectionOn(...)`.
@@ -103,7 +110,7 @@ Do not ask the user for a local SDK source checkout and do not include steps tha
 - Do not add API-key or credentials setup to Android app code; the SDK initialization APIs used by this skill do not take app-provided credentials.
 - Set a valid device ID before enabling the SDK or starting tracking. Keep device identity separate from tracking flows: generated repositories should expose `setDeviceId(...)` for login/session binding, and start/enable tracking methods should not accept or reset the device ID.
 - Check `isAllRequiredPermissionsAndSensorsGranted()` before enabling the SDK. Do not rely on compile-time manifest declarations as runtime permission proof.
-- Expose the SDK permissions wizard in generated integrations. Add a repository method that returns `PermissionsWizardActivity.getStartWizardIntent(...)`, and add an Activity/Compose-friendly coordinator or usage example that launches it through Activity Result API. The repository should create the SDK `Intent`; UI should launch it and handle the result. The Android Permission Wizard walks the user through up to 4 steps (exact set depends on Android version): (1) Location "Allow all the time" — on Android 11+ foreground location is requested first, then background location separately in a second step; (2) Physical Activity / Activity Recognition (Android 10+); (3) Battery Optimization — disable optimization so the SDK can run in background; (4) Device Location GPS — turn on system location services if disabled. Two aggressiveness flags control wizard behavior: `enableAggressivePermissionsWizard` (true = user cannot close the wizard) and `enableAggressivePermissionsWizardPage` (true = user cannot proceed without granting the current permission). Result codes: `WIZARD_RESULT_ALL_GRANTED`, `WIZARD_RESULT_CANCELED`, `WIZARD_RESULT_NOT_ALL_GRANTED`. Wizard UI is customizable via XML string/color/dimen resources. See https://docs.damoov.com/docs/android-sdk-integration
+- Expose the Android 4.1 SDK wizard in generated integrations. Use `TrackingPermissionsWizardActivity.getStartWizardIntent(...)` and its configuration options; do not use pre-4.1 wizard APIs. Pass `themeMode` (`Light`, `Dark`, or `System`), `blockEarlyExit`, and `skipWizardPages`; defaults are `System`, `false`, and `false`. Keep SDK `Intent` creation in a repository/coordinator and launch it from Activity/Compose through Activity Result APIs. Handle `WIZARD_RESULT_ALL_GRANTED`, `WIZARD_RESULT_NOT_ALL_GRANTED`, and `WIZARD_RESULT_CANCELED`. See `references/android/common-sdk-surface.md` before writing wizard code.
 - Do not remove or cap SDK manifest permissions without verifying merged manifest behavior and runtime requirements.
 - Use `setEnableSdk(true)` / `setEnableSdk(false)`. Do not use removed `setEnableSdk(enable, withCheckingPermissions)` overloads.
 - Expose `enableSdk()` and `disableSdk()` as separate repository methods. `disableSdk()` must only disable collection with `setEnableSdk(false)`; do not add identity-clearing parameters and do not call `logout()` from it.
@@ -119,6 +126,11 @@ Do not ask the user for a local SDK source checkout and do not include steps tha
 - Expose a relevant stop method for every supported flow: automatic disables SDK collection, standard manual stops tracking and disables SDK collection, tagged manual flows remove future tags before stopping when cleanup is required, app-controlled persistent flows also restore `TrackingMode.Standard`, and one-time persistent flows must not manually restore `TrackingMode.Standard`.
 - Persist app-level trip recording mode state outside `TelematicsRepository`, for example as `(TripRecordMode, isActive)` in the host app's preferences/settings layer. Use cases must update this state after successful mode transitions and read it before deciding whether to enable, disable, stop, or start tracking.
 - For cross-platform manual tagged flows, treat "with tags" as future tags attached before the upcoming manually started trip.
+- Future Tags are deprecated for new metadata work. Use Properties for trip metadata and Sub-units for analytical classification; keep Future Tag support only for existing backwards-compatible flows.
+- Treat Properties and Sub-units as complete replacement `Map<String, String>` values. Read the current map before changing one key, and never pass an empty map to clear it; call `clearProperties()` or `clearSubUnits()`.
+- Store only flat non-PII strings. Properties allow 1–20 entries; Sub-units allow 1–5. Every key and value must be non-empty and at most 255 characters.
+- A Properties change during active tracking completes the current trip and starts the next one. A Sub-units change never restarts active tracking and applies to the next trip.
+- Call `addActivityLog(text, data)` only during active tracking. It neither stops nor splits tracking; text must be 1–1000 characters, a trip accepts at most 100 entries, and an empty map is valid when no extra data is needed.
 - Future tag `tag` and `source` values are product-defined strings. Do not invent SDK-side enums or hardcoded user-visible labels for them; validate allowed business values in the host app/backend when needed.
 - If a future tag is required for a manually started trip, add the tag and wait for the tag processing callback/receiver status before starting tracking; otherwise document the race.
 - Do not collapse future-tag result statuses to `Unit` when sequencing depends on them. Preserve or map SDK statuses such as success, offline/backend failure, invalid device ID, or generic tag operation failure into the app's result/error model.

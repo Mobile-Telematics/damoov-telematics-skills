@@ -4,18 +4,30 @@ This reference covers Android host app setup for the Damoov Flutter plugin. It i
 
 ## Plugin Native Baseline
 
-The verified plugin uses:
+The verified plugin `1.2.0` requires Flutter `3.44.0` or later and uses:
 
-- Android Gradle Plugin `8.12.0`
-- Kotlin `2.2.20`
-- Compile SDK `36`
+- Android Gradle Plugin `9.3.0`
+- Gradle `9.6.1`
+- Compile SDK `37`
 - Min SDK `24`
-- Java/Kotlin target `17`
-- `com.telematicssdk:tracking:4.0.0`
+- Target SDK `36`
+- Java target `17` and AGP built-in Kotlin with JVM target `17`
+- Core-library desugaring `com.android.tools:desugar_jdk_libs:2.1.5`
+- `com.telematicssdk:tracking:4.1.0`
 - Damoov Maven repository `https://s3.us-east-2.amazonaws.com/android.telematics.sdk.production/`
-- Gradle 8+
 
-Do not force these versions into the host app without checking its existing Gradle setup. Make the smallest compatible changes.
+The native Android SDK needs `compileSdk 37` or higher. Flutter `3.44` supports Android deployment API 24 through 37, so the Flutter host must keep `minSdk >= 24` even though the native SDK itself has a floor of 23.
+
+## Compatibility Decision
+
+Inspect the installed Flutter SDK, the plugin's `pubspec.yaml`, the host AGP, Gradle wrapper, Java toolchain, and existing Android plugins before changing dependencies.
+
+- Flutter earlier than `3.44.0`: do not use plugin `1.2.0`. Select a plugin release that explicitly supports the app's Flutter version; do not modify the plugin in the package cache.
+- Host `compileSdk` lower than `37`: upgrade through a supported host-toolchain path. Never lower the Damoov requirement to 36 as a workaround.
+- API 37 requires AGP `9.1.1+` with Gradle `9.3.1+`; AGP `9.3.x` requires Gradle `9.5+`. The plugin's AGP `9.3.0` / Gradle `9.6.1` pair is a verified plugin baseline, not a command to overwrite every host app's wrapper or Android plugin.
+- AGP 9 provides built-in Kotlin. Do not add `kotlin-android` or a second Kotlin plugin just to copy the plugin configuration. Preserve the host's generated Flutter configuration and configure JVM target 17 using the supported DSL for that toolchain.
+
+If an existing host cannot make a supported API 37 upgrade, report the compatibility block and use an explicitly compatible plugin release. Do not claim that an older AGP is supported merely because a particular build happens to pass.
 
 ## Manifest
 
@@ -64,8 +76,39 @@ maven {
 Dependency for direct native access:
 
 ```groovy
-implementation "com.telematicssdk:tracking:4.0.0"
+implementation "com.telematicssdk:tracking:4.1.0"
 ```
+
+When the host needs the Android settings explicitly, adapt this Groovy example to its existing Gradle shape rather than copying root plugin declarations:
+
+```groovy
+android {
+    compileSdkVersion 37
+
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 36
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+dependencies {
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.5"
+}
+```
+
+On AGP 9, Kotlin is provided by AGP. Do not add `apply plugin: 'kotlin-android'` solely for this snippet.
 
 Release settings recommended by the plugin README:
 
@@ -216,4 +259,4 @@ flutter test
 flutter build apk --debug
 ```
 
-If a full build is too expensive locally, at minimum run `flutter pub get`, `flutter analyze`, and inspect manifest merge/build errors from the smallest Gradle task available in the app.
+Before the build, inspect the resolved `compileSdk`, `minSdk`, `targetSdk`, AGP, Gradle wrapper, Java version, and desugaring dependency. If a full build is too expensive locally, at minimum run `flutter pub get`, `flutter analyze`, and inspect manifest merge/build errors from the smallest Gradle task available in the app.

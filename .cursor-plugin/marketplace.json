@@ -1,11 +1,12 @@
 {
   "name": "damoov-telematics",
   "owner": {
-    "name": "Damoov"
+    "name": "Damoov",
+    "email": "hello@damoov.com"
   },
   "metadata": {
     "description": "Self-hosted Damoov plugin marketplace.",
-    "version": "1.0.2"
+    "version": "1.0.3"
   },
   "plugins": [
     {

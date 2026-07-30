@@ -12,9 +12,9 @@ The verified plugin uses:
 - React Native CocoaPods integration through `install_modules_dependencies(s)`
 - TelematicsSDK SPM dependency through `spm_dependency(...)`
 - TelematicsSDK SPM URL `https://github.com/Mobile-Telematics/telematicsSDK-iOS-new-SPM.git`
-- Exact native SDK version `7.1.0` in the podspec
+- Exact native SDK version `7.2.0` in the podspec
 
-The plugin README also describes manually adding TelematicsSDK SPM to the app target with exact version `7.0.3`; prefer the installed podspec/source when there is a conflict. The app target may still need explicit SPM linkage because TelematicsSDK is a dynamic framework and app lifecycle code imports `TelematicsSDK`.
+When package documentation and the installed podspec/source disagree about a native version, prefer the installed package source. The app target may still need explicit SPM linkage because TelematicsSDK is a dynamic framework and app lifecycle code imports `TelematicsSDK`.
 
 ## Podfile And SPM
 

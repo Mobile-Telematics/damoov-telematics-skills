@@ -7,7 +7,7 @@ This reference covers iOS host app setup for the Damoov Flutter plugin. It is ba
 The verified plugin uses:
 
 - Swift Package target platform `.iOS("13.0")`
-- TelematicsSDK SPM dependency `https://github.com/Mobile-Telematics/telematicsSDK-iOS-new-SPM.git`, from `7.1.0`
+- TelematicsSDK dependency checkpoint `7.2.0`
 - Flutter plugin class `TelematicsSDKPlugin`
 - `registrar.addApplicationDelegate(instance)`
 - `registrar.addSceneDelegate(instance)`

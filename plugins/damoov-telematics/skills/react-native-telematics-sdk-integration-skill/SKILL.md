@@ -1,6 +1,6 @@
 ---
 name: react-native-telematics-sdk-integration-skill
-description: Use when designing, integrating, migrating, reviewing, or debugging the Damoov SDK React Native plugin in React Native apps, especially npm/yarn setup, react-native-telematics API usage, old/new architecture and TurboModule behavior, Android Gradle/manifest/proguard setup, iOS Podfile/SPM/Info.plist/AppDelegate/SceneDelegate setup, lifecycle forwarding, permission wizard wiring, automatic/manual tracking flows, persistent tracking, future tags, platform-specific APIs, and validation against the public React Native plugin source.
+description: Use when designing, integrating, migrating, reviewing, or debugging the Damoov SDK React Native plugin in React Native apps, especially npm/yarn setup, react-native-telematics API usage, old/new architecture and TurboModule behavior, Android Gradle/manifest/proguard setup, iOS Podfile/SPM/Info.plist/AppDelegate/SceneDelegate setup, lifecycle forwarding, configured permission wizard, automatic/manual tracking flows, persistent tracking, trip metadata (Properties, Sub-units, Activity Log), backwards-compatible future tags, platform-specific APIs, and validation against the public React Native plugin source.
 ---
 
 # React Native Telematics SDK Integration
@@ -9,13 +9,13 @@ description: Use when designing, integrating, migrating, reviewing, or debugging
 
 Treat the React Native plugin source and the target app's lockfiles as the source of truth. Public docs and README examples are baseline guidance; verify the plugin API from `src/TelematicsSdk.ts`, `src/index.tsx`, the native bridge code, and the installed package version before editing app code.
 
-The reference plugin source used to build this skill is the public repository [Mobile-Telematics/telematicsSDK-demoapp-react](https://github.com/Mobile-Telematics/telematicsSDK-demoapp-react), verified at package source version `3.0.1`, with React Native `0.81.4`, Android native SDK `com.telematicssdk:tracking:4.0.0`, and iOS SPM SDK `7.1.0` in the podspec. Treat those as API reference checkpoints, not install targets. Always verify and install the latest compatible React Native plugin version before changing dependencies.
+The reference plugin source used to build this skill is the public repository [Mobile-Telematics/telematicsSDK-demoapp-react](https://github.com/Mobile-Telematics/telematicsSDK-demoapp-react), verified at package source version `3.1.0`, with Android native SDK `com.telematicssdk:tracking:4.1.0` and iOS SDK `7.2.0`. Plugin `3.1.0` requires React Native `0.86.0` or later. Treat these as API and compatibility checkpoints, not install targets. Always verify and install the latest compatible React Native plugin version before changing dependencies.
 
 ## Workflow
 
 1. Inspect the target React Native app first:
    - `package.json`, lockfile (`yarn.lock`, `package-lock.json`, or `pnpm-lock.yaml`), React Native version, `react-native.config.js`, New Architecture setting.
-   - `android/build.gradle`, `android/app/build.gradle`, `android/app/src/main/AndroidManifest.xml`, proguard files, Java/Kotlin version, Gradle/AGP versions.
+   - `android/build.gradle`, `android/app/build.gradle`, `android/gradle/wrapper/gradle-wrapper.properties`, `android/settings.gradle`, `android/app/src/main/AndroidManifest.xml`, proguard files, `compileSdk`/`minSdk`/`targetSdk`, Java/Kotlin resolution, Gradle/AGP versions, desugaring, and New Architecture configuration.
    - `ios/Podfile`, `ios/Podfile.lock`, `ios/*/Info.plist`, `ios/AppDelegate.swift` or `AppDelegate.mm`, `SceneDelegate`, deployment target, package dependencies.
    - Existing usage: `rg -n "react-native-telematics|TelematicsSdk|initializeSdk|setDeviceId|setEnableSdk|startManualTracking|startTrackAsPersistent|setTrackingMode|FutureTrack|PermissionWizard" .`.
 
@@ -23,6 +23,7 @@ The reference plugin source used to build this skill is the public repository [M
    - Published package: query npm with `npm view react-native-telematics version` and install that latest compatible version with the app's package manager.
    - Git dependency: query tags with `git ls-remote --tags --refs https://github.com/Mobile-Telematics/telematicsSDK-demoapp-react.git` and use the latest semantic version tag exactly when the user needs the repository version.
    - Do not hardcode the verified reference source version from this skill unless it is still the latest compatible published or tagged version.
+   - If resolving plugin `3.1.0`, verify the app uses React Native `0.86.0` or later. Do not bypass its peer-dependency constraint or patch plugin internals to install it into an older React Native app.
 
 3. Choose dependency style based on the app:
    - Published package: add `react-native-telematics` with the app's package manager.
@@ -37,17 +38,17 @@ The reference plugin source used to build this skill is the public repository [M
 5. Before implementing a new reusable React Native service/facade, ask which primary tracking flow should be placed first:
    - automatic tracking
    - standard manual tracking without tags
-   - standard manual tracking with future tags
+   - standard manual tracking with legacy future tags
    - app-controlled persistent manual tracking without tags
-   - app-controlled persistent manual tracking with future tags
+   - app-controlled persistent manual tracking with legacy future tags
    - one-time persistent manual tracking without tags
-   - one-time persistent manual tracking with future tags
+   - one-time persistent manual tracking with legacy future tags
    If the user already stated the primary flow or product code makes it clear, use it without asking.
 
 6. Prefer an app-owned TypeScript facade around the default `TelematicsSdk` export instead of calling the plugin directly from many components. The facade should own initialization, device ID assignment, SDK enablement, permission checks, manual tracking state, persistent mode policy, future-tag sequencing, listener subscription lifecycle, and platform guards.
 
 7. Configure host platforms completely. React Native JS code alone is insufficient:
-   - Android must have required permissions, Gradle/repository settings, release shrink settings, proguard rules when minified, and runtime permission handling before enabling SDK.
+   - Android must have required permissions, the Damoov Maven repository in the active dependency-resolution scope, `compileSdk >= 37`, `minSdk >= 24`, Java 17, desugaring 2.1.5, release shrink settings, proguard rules when minified, New Architecture/TurboModule validation, and runtime permission handling before enabling SDK. Do not manually add the permission-wizard activity: autolinking merges the plugin manifest.
    - iOS must have `use_frameworks! :linkage => :dynamic`, required permission keys, background modes, BG task identifiers, app target SPM linkage for `TelematicsSDK`, and `RPEntry.initializeSDK()` plus lifecycle forwarding.
 
 8. Implement flow methods in TypeScript with the selected primary flow first and mark it:
@@ -58,11 +59,14 @@ The reference plugin source used to build this skill is the public repository [M
    - package install (`yarn install`, `npm install`, or app-standard command)
    - TypeScript/lint checks (`yarn tsc`, `yarn lint`, or app-standard scripts)
    - tests if present
-   - Android build or smallest Gradle task after Android changes
+   - Android build or smallest Gradle task after Android changes; first inspect the resolved SDK levels, Gradle wrapper, AGP, Java/Kotlin resolution, desugaring, repository mode, and New Architecture state
    - `cd ios && pod install`, then iOS build where feasible after iOS changes
 
 ## Coding Rules
 
+- Plugin `3.1.0` is a React Native `0.86.0+` integration. React Native `0.82+` runs only on the New Architecture: do not claim that `newArchEnabled=false` restores a legacy runtime. Validate the plugin as a TurboModule after a native rebuild.
+- For Android SDK `4.1.0` through this plugin, keep `compileSdk >= 37`, `minSdk >= 24` for the React Native host, target SDK `36` as the verified example baseline, Java target 17, and core-library desugaring `2.1.5`. The module fails the build if `TelematicsSdk_compileSdkVersion` resolves below 37; never lower the requirement to satisfy an older host toolchain.
+- The plugin's RN 0.86 example validates Gradle `9.3.1`, AGP `8.12.0`, and Kotlin `2.3.21` compatibility with `compileSdk 37`. This is not a blanket instruction to overwrite a host application's wrapper, AGP, or Kotlin version. Inspect the generated React Native project and resolve its compatible toolchain; label any unsupported-compile-SDK suppression as an app-specific, validated exception.
 - Call `TelematicsSdk.initializeSdk()` exactly once during app startup before other plugin APIs. Do not call it again from each tracking start method. On iOS it resolves without initializing native SDK itself, so host `AppDelegate` still must call `RPEntry.initializeSDK()`.
 - Keep one app-owned ownership point for plugin calls. Avoid direct calls from many screens unless the app architecture already has a deliberate feature boundary.
 - Add listeners in lifecycle-owned code and always call `.remove()` during cleanup.
@@ -70,7 +74,7 @@ The reference plugin source used to build this skill is the public repository [M
 - Treat the device ID as a Damoov-issued user identifier in GUID format, also known as DeviceToken — the same value visible as UserId in Damoov Datahub. One DeviceToken per app user. Two ways to obtain it — both via `POST https://user.telematicssdk.com/v1/Registration/create` with `InstanceId` + `InstanceKey` headers: (1) Damoov-generated: omit `CustomToken` → Damoov generates and returns a UUID; (2) App-provided: pass your own UUID as `CustomToken` body param → Damoov registers that UUID as the DeviceToken. Store the DeviceToken in the app's backend database linked to the user record. Do not use a locally generated UUID without registering it on the Damoov platform first. See https://docs.damoov.com/docs/set-up-the-sdk-login-and-api-authentication and https://docs.damoov.com/reference/create-sdk-user
 - Do not add API-key or credentials setup to app code; the React Native plugin APIs used by this skill do not take credentials.
 - Set device ID before enabling SDK or starting manual tracking, but do it through the separate identity method rather than inside each tracking flow method.
-- Check `isAllRequiredPermissionsAndSensorsGranted()` before enable/start flows; use `showPermissionWizard(...)` when the product wants native permission onboarding. When calling `showPermissionWizard(enableAggressivePermissionsWizard, enableAggressivePermissionsWizardPage)`: `enableAggressivePermissionsWizard: true` means the user cannot close the wizard without completing all steps; `enableAggressivePermissionsWizardPage: true` means the user cannot advance past each page without granting the current permission. On Android the wizard covers Location (Always), Physical Activity, Battery Optimization, and GPS. On iOS the wizard covers Location (Always), Notifications, Motion & Fitness, and optionally Bluetooth.
+- Check `isAllRequiredPermissionsAndSensorsGranted()` before enable/start flows. For native onboarding call `showPermissionWizard({ themeMode, blockEarlyExit, skipWizardPages })`; never use the removed two-boolean overload. Those options configure Android only. On iOS, call `configureIosPermissionWizard(...)` and, when needed, `configureIosMissingPermissionsAlert(...)` plus `setIosMissingPermissionsAlertEnabled(...)` before launching.
 - For automatic tracking, assume `initializeSdk()` and device ID setup already happened and call `setEnableSdk(true)`.
 - For standard manual tracking, ensure the device ID has already been configured, verify permissions, enable SDK collection, call `setTrackingMode(TrackingMode.Standard)`, then `startManualTracking()`.
   > React Native uses `TrackingMode.Standard` / `TrackingMode.Persistent` (uppercase). Flutter uses `TrackingMode.standard` (lowercase). Do not copy casing from other platforms.
@@ -83,6 +87,10 @@ The reference plugin source used to build this skill is the public repository [M
 - Add future tags before starting a manually tagged trip; await the promise result before starting tracking where product correctness depends on tags being attached to the upcoming trip.
 - For every future tag, `tag` is a required `string` and `source` is an optional `string`. Omit `source` when it is unavailable; do not require an empty or `undefined` placeholder.
 - Remove future tags before disabling the SDK when cleanup depends on SDK/API availability.
+- Future Tags are deprecated for new metadata work. Use Properties for trip metadata and Sub-units for analytical classification; retain Future Tag flows only for backwards compatibility.
+- Treat Properties and Sub-units as complete replacement `Record<string, string>` values. Read before changing one key, and clear with `clearProperties()` / `clearSubUnits()`, never `{}`.
+- Store only flat non-PII strings. Properties allow 1–20 entries; Sub-units allow 1–5. Keys and values must be non-empty and at most 255 characters.
+- Properties changes during tracking complete the current trip and start the next one. Sub-units changes never restart tracking and apply to the next trip. Call `addActivityLog(text, data)` only during active tracking; it neither stops nor splits tracking, accepts text of 1–1000 characters, allows 100 entries per trip, and accepts `{}` when no extra data is needed.
 - Treat tagged manual flows as future-tag flows for upcoming trips. Do not imply processed-trip tag editing unless the latest installed plugin exposes that API.
 - Generated facades should expose all seven app-level flows explicitly: automatic, standard manual with and without future tags, app-controlled persistent manual with and without future tags, and one-time persistent manual with and without future tags.
 - On iOS, call iOS-only methods/listeners only behind `Platform.OS === 'ios'`.

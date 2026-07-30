@@ -1,6 +1,6 @@
 # Flutter Plugin API Reference
 
-This reference summarizes the Dart API shape verified from `telematics_sdk` plugin version `1.1.3`. Inspect the latest package and installed package before editing an app because method names and platform support can change.
+This reference summarizes the Dart API shape verified from `telematics_sdk` plugin version `1.2.0`, with native SDK checkpoints iOS `7.2.0` and Android `4.1.0`. Inspect the latest package and installed package before editing an app because method names and platform support can change.
 
 ## Dependency
 
@@ -88,7 +88,14 @@ Do not scatter `TrackingApi()` calls across many widgets. Centralizing the API k
 - `uploadUnsentTrips()`
 - `getUnsentTripCount() -> Future<int?>`
 - `sendCustomHeartbeats({required String reason})`
-- `showPermissionWizard({required bool enableAggressivePermissionsWizard, required bool enableAggressivePermissionsWizardPage})`
+- `showPermissionWizard({AndroidPermissionWizardOptions? android}) -> Future<void>`
+- `setProperties({required Map<String, String> properties})`
+- `getProperties() -> Future<Map<String, String>>`
+- `clearProperties()`
+- `setSubUnits({required Map<String, String> subUnits})`
+- `getSubUnits() -> Future<Map<String, String>>`
+- `clearSubUnits()`
+- `addActivityLog({required String text, required Map<String, String> data})`
 - `registerSpeedViolations({required double speedLimitKmH, required int speedLimitTimeout})`
 - `setAccidentDetectionSensitivity({required AccidentDetectionSensitivity sensitivity})`
 - `setAccidentDetectionEnabled({required bool value})`
@@ -108,6 +115,9 @@ iOS-only:
 - `isWrongAccuracyState()`
 - `requestIOSLocationAlwaysPermission()`
 - `requestIOSMotionPermission()`
+- `configureIosPermissionWizard(IosPermissionWizardConfiguration configuration)`
+- `configureIosMissingPermissionsAlert(IosMissingPermissionsAlertConfiguration configuration)`
+- `setIosMissingPermissionsAlertEnabled(bool enabled)`
 - `iOSWrongAccuracyAuthorization`
 - `iOSRTLDDataCollected`
 
@@ -148,17 +158,50 @@ void start() {
 Future<void> dispose() => _trackingSub.cancel();
 ```
 
+## Permissions Wizard
+
+The two-boolean wizard overload was removed. On Android, configure the SDK 4.1 wizard at launch:
+
+```dart
+await trackingApi.showPermissionWizard(
+  android: const AndroidPermissionWizardOptions(
+    themeMode: AndroidPermissionWizardThemeMode.system,
+    blockEarlyExit: false,
+    skipWizardPages: false,
+  ),
+);
+```
+
+`blockEarlyExit` prevents leaving before the wizard completes. `skipWizardPages` skips informational pages. `showPermissionWizard` completes after presentation begins; wait for `onPermissionWizardClose` before enabling a permission-dependent product flow.
+
+On iOS, the Android options are ignored. Configure the iOS 7.2 guided wizard and optional independent foreground alert before launching:
+
+```dart
+if (Platform.isIOS) {
+  await trackingApi.configureIosPermissionWizard(
+    const IosPermissionWizardConfiguration(),
+  );
+  await trackingApi.configureIosMissingPermissionsAlert(
+    const IosMissingPermissionsAlertConfiguration(isBlocking: false),
+  );
+  await trackingApi.setIosMissingPermissionsAlertEnabled(true);
+}
+await trackingApi.showPermissionWizard();
+```
+
+Omitted iOS configuration fields retain native defaults. The guided wizard configures Location When In Use, Location Always, Motion & Fitness, status copy, and light/dark themes. The missing-permissions alert is independent; enable it only when the product needs reminders after permissions have already been requested.
+
 ## Flow Sequences
 
 Supported app-level flows:
 
 - automatic tracking
 - standard manual tracking without future tags
-- standard manual tracking with future tags
+- standard manual tracking with legacy Future Tags
 - app-controlled persistent manual tracking without future tags
-- app-controlled persistent manual tracking with future tags
+- app-controlled persistent manual tracking with legacy Future Tags
 - one-time persistent manual tracking without future tags
-- one-time persistent manual tracking with future tags
+- one-time persistent manual tracking with legacy Future Tags
 
 For Flutter tagged-flow snippets, `addFutureTrackTag(...)` means an app facade helper that calls the raw plugin `TrackingApi.addFutureTrackTag(...)` and completes only after `futureTrackTagAdded` emits the native result. If the app uses the raw plugin method directly, start listening to `futureTrackTagAdded` before the call and await the result before starting tracking when tag attachment is product-critical.
 
@@ -304,7 +347,34 @@ Do not call `setTrackingMode(trackingMode: TrackingMode.persistent)` before `sta
 
 If the app intentionally combines manual trips with automatic tracking, keep the SDK enabled after `stopManualTracking()` and document that product behavior in the facade.
 
-## Future Tags
+## Trip Metadata
+
+Use Properties for trip metadata and Sub-units for analytical classification. Both are flat string maps; do not include personally identifiable information.
+
+```dart
+await trackingApi.setProperties(properties: {'order': 'A-42'});
+final properties = await trackingApi.getProperties();
+await trackingApi.clearProperties();
+
+await trackingApi.setSubUnits(subUnits: {'vehicle': 'van-7'});
+final subUnits = await trackingApi.getSubUnits();
+await trackingApi.clearSubUnits();
+
+await trackingApi.addActivityLog(
+  text: 'Arrived at depot',
+  data: const {},
+);
+```
+
+- Both setters replace the complete map. Read first before changing one key; never pass an empty map to clear it.
+- Properties allow 1–20 entries. A change during active tracking completes the current trip and starts the next trip with the replacement.
+- Sub-units allow 1–5 entries. Changes never restart active tracking and apply to the next trip.
+- Keys and values must be non-empty and no longer than 255 characters. Both maps clear on logout or device-ID change.
+- Activity Log requires active tracking. It neither stops nor splits tracking; text must be 1–1000 characters, a trip allows 100 entries, and an empty data map is valid.
+
+## Deprecated Future Tags
+
+Future Tags remain for backwards compatibility. Use Properties or Sub-units for all new trip-metadata work.
 
 Future tag operations return immediately and deliver results through streams on `TrackingApi`. Start listening before invoking the operation so a fast native result cannot be missed:
 

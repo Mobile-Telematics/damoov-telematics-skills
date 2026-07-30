@@ -10,7 +10,7 @@ This is a recommendation, not a verified SDK requirement. The reason is architec
 
 Use names that match the host app conventions, but keep these responsibilities separate:
 
-- `TelematicsService`: owns `RPEntry` lifecycle, configuration, tracking, status, diagnostics, accident-detection, and delegate calls, excluding `RPEntry.instance.api`.
+- `TelematicsService`: owns `RPEntry` lifecycle, configuration, tracking, status, diagnostics, accident-detection, Properties, Sub-units, Activity Log, and delegate calls, excluding `RPEntry.instance.api`.
 - `TelematicsAPIService`: owns track/origin methods from `RPEntry.instance.api`.
 - `TelematicsTagsService`: owns track-tag and future-tag methods from `RPEntry.instance.api`.
 - `TelematicsLifecycleAdapter`: centralizes `UIApplicationDelegate` / `UISceneDelegate` forwarding, but is called by standard app delegates named `AppDelegate` and `SceneDelegate`.
@@ -836,6 +836,10 @@ When reviewing an integration, flag these issues:
 - Direct `RPEntry.instance` calls outside the service/lifecycle adapter.
 - Direct track/origin `RPEntry.instance.api` calls outside `TelematicsAPIService`.
 - Direct tag/future-tag `RPEntry.instance.api` calls outside `TelematicsTagsService`.
+- Properties, Sub-units, or Activity Log calls outside `TelematicsService`.
+- Empty dictionary used to clear Properties or Sub-units instead of their dedicated clear method.
+- Properties changed during active tracking without accepting that the current trip completes.
+- Activity Log added while tracking is inactive.
 - Missing full lifecycle forwarding from `integration-reference.md`.
 - Duplicated foreground/background forwarding between SceneDelegate and AppDelegate paths.
 - Missing flow-specific stop methods for the supported tracking start flows.

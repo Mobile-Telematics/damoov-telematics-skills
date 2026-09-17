@@ -1,6 +1,6 @@
 {
   "name": "damoov-telematics",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Damoov skills for mobile SDK integration, backend registration, platform APIs, trips, statistics, and testing.",
   "author": {
     "name": "Damoov",

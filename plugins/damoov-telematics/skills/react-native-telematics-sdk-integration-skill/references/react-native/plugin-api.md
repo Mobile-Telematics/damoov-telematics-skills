@@ -1,6 +1,8 @@
 # React Native Plugin API Reference
 
-This reference summarizes the TypeScript API shape verified from the public `react-native-telematics` source at version `3.1.0`, with native SDK checkpoints iOS `7.2.0` and Android `4.1.0`. Version `3.1.0` requires React Native `0.86.0` or later. Inspect the latest package and installed package before editing an app because method names and platform support can change.
+This reference summarizes the TypeScript API shape verified from the public `react-native-telematics` source at version `3.1.2`, with native SDK checkpoints iOS `7.2.0` and Android `4.1.0`. Version `3.1.2` declares `react-native >=0.83.0` and is verified on React Native `0.83.10` (Expo SDK 55), `0.85.3` (Expo SDK 56), and `0.86.3` (Expo SDK 57). Inspect the latest package and installed package before editing an app because method names and platform support can change.
+
+The JS API is identical on both integration paths. For the native setup that has to exist underneath it, see `expo-config-plugin.md` for Expo CNG projects and `../android/host-setup.md` / `../ios/host-setup.md` for bare React Native.
 
 ## Dependency
 
@@ -38,7 +40,9 @@ Use the latest semantic version tag exactly:
 }
 ```
 
-Run the app-standard install command and rebuild native apps after adding the package. Do not bypass the `react-native >=0.86.0` peer constraint for version `3.1.0`; choose a plugin release compatible with an older React Native app instead.
+Run the app-standard install command and rebuild native apps after adding the package. On an Expo CNG project, re-run `npx expo prebuild --clean` instead of editing native files. Do not bypass the `react-native >=0.83.0` peer constraint for version `3.1.2`; choose a plugin release compatible with an older React Native app instead. The floor is real on iOS: the podspec needs the `spm_dependency` helper that React Native `0.83` introduced, and `pod install` fails without it.
+
+`@expo/config-plugins` is an optional peer dependency, used only by the Expo config plugin. Bare React Native apps do not need it.
 
 ## Entry Point
 
@@ -56,7 +60,7 @@ import TelematicsSdk, {
 } from 'react-native-telematics';
 ```
 
-The package exposes its bridge through a TurboModule. React Native `0.82+` runs only on the New Architecture, including RN `0.86+`; do not present a legacy module as a runtime fallback or set `newArchEnabled=false` as a workaround. If the module is missing, the JS wrapper throws an error that usually means pods/Gradle sync and a native rebuild are required. Verify the generated host build completes with the TurboModule enabled.
+The package exposes its bridge through a TurboModule. React Native `0.82+` runs only on the New Architecture, including every version in the supported `0.83+` range; do not present a legacy module as a runtime fallback or set `newArchEnabled=false` as a workaround. If the module is missing, the JS wrapper throws an error that usually means pods/Gradle sync and a native rebuild are required. Verify the generated host build completes with the TurboModule enabled.
 
 No app-side credentials are passed to the React Native plugin. The SDK setup described by this skill does not require API keys in JS, `Info.plist`, or `AndroidManifest.xml`.
 
@@ -218,9 +222,20 @@ Initialize once during app startup before JS-side API usage:
 await TelematicsSdk.initializeSdk();
 ```
 
-Do not call `initializeSdk()` from each tracking start method. On iOS, this JS call does not replace native launch initialization. `AppDelegate` still must call `RPEntry.initializeSDK()`.
+Do not call `initializeSdk()` from each tracking start method.
 
-The iOS implementation may be a no-op, but the method must still exist for the React Native bridge and TurboModule/codegen surface to stay consistent across platforms. Call it once from JS app startup before the facade accepts tracking commands.
+Per-platform semantics in `3.1.2`:
+
+- **Android** — `initializeSdk()` performs the actual SDK initialization. Call it before any other API.
+- **iOS** — the authoritative initialization is native: `RPEntry.initializeSDK()` in the AppDelegate. `initializeSdk()` also initializes the SDK when it has not been initialized yet, as a safety net for JS call ordering, but it does not remove the need for the AppDelegate call. Lifecycle forwards run at launch before any JS executes, so an app relying on the JS call alone still crashes at launch.
+
+Every other iOS bridge method rejects with error code `SDK_NOT_INITIALIZED` until initialization has happened. Surface that code as a setup error; do not retry it as if it were transient. Check state first when diagnosing:
+
+```ts
+const initialized = await TelematicsSdk.isInitializedSdk();
+```
+
+`isInitializedSdk()` is the one method that is safe to call before initialization.
 
 Device identity setup:
 

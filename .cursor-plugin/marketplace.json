@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Self-hosted Damoov plugin marketplace.",
-    "version": "1.0.3"
+    "version": "1.0.4"
   },
   "plugins": [
     {

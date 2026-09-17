@@ -2,19 +2,29 @@
 
 This reference covers iOS host app setup for `react-native-telematics`. It is based on the public plugin's iOS implementation, podspec, README, and example app. Verify the installed plugin and generated React Native iOS project before editing.
 
+On an Expo CNG project the config plugin applies all of this during `expo prebuild`; see `../react-native/expo-config-plugin.md`. Use this file as the explanation of what it does, and as the manual path for bare React Native apps.
+
 ## Plugin Native Baseline
 
-The verified plugin uses:
+The verified plugin `3.1.2` uses (unchanged from `3.1.1`; the `3.1.2` release did not touch iOS):
 
 - Podspec name `react-native-telematics-sdk`
-- iOS platform `13.0`
+- iOS deployment target `15.1`
 - Swift `5.0`
 - React Native CocoaPods integration through `install_modules_dependencies(s)`
 - TelematicsSDK SPM dependency through `spm_dependency(...)`
 - TelematicsSDK SPM URL `https://github.com/Mobile-Telematics/telematicsSDK-iOS-new-SPM.git`
 - Exact native SDK version `7.2.0` in the podspec
 
-When package documentation and the installed podspec/source disagree about a native version, prefer the installed package source. The app target may still need explicit SPM linkage because TelematicsSDK is a dynamic framework and app lifecycle code imports `TelematicsSDK`.
+The podspec fails `pod install` when the `spm_dependency` helper is unavailable:
+
+```text
+react-native-telematics requires React Native 0.83 or newer, which provides spm_dependency in react_native_pods.rb.
+```
+
+That is the real iOS floor behind the `react-native >=0.83.0` peer range. Do not patch the podspec to bypass it.
+
+When package documentation and the installed podspec/source disagree about a native version, prefer the installed package source. The app target still needs explicit SPM linkage, for the reason described below.
 
 ## Podfile And SPM
 
@@ -33,13 +43,25 @@ cd ios
 pod install
 ```
 
-Verify the app target can import `TelematicsSDK` from `AppDelegate` and `SceneDelegate`. If not, add the SPM package to the app target in Xcode:
+### Attach The Swift Package To The App Target
 
+React Native's `spm_dependency(...)` helper registers the Swift package on the Pods project and attaches the product to the **CocoaPods pod target only**. CocoaPods' `Pods-<App>-frameworks.sh` embed script embeds pods, not Swift Package products. The result is an app that links successfully and then crashes at launch:
+
+```text
+Library not loaded: @rpath/TelematicsSDK.framework/TelematicsSDK
+```
+
+In a bare React Native app, add the package to the app target once in Xcode:
+
+- Open the `.xcworkspace`
+- Select the app project → **Package Dependencies** → **+**
 - Package URL: `https://github.com/Mobile-Telematics/telematicsSDK-iOS-new-SPM.git`
 - Product: `TelematicsSDK`
-- Version: exact version matching the installed plugin/podspec unless the user requested a specific version
-- Target: app target, not only Pods targets
-- Embed setting: `Embed & Sign`
+- Dependency rule: **Exact Version**, matching the installed plugin/podspec unless the user requested a specific version
+- Target: the app target, not only Pods targets
+- Verify under Target → **General** → **Frameworks, Libraries, and Embedded Content** that `TelematicsSDK.framework` is present and set to **Embed & Sign**
+
+On Expo, this manual Xcode step does not survive `expo prebuild`, which regenerates `project.pbxproj`. The config plugin does it instead, through a `post_install` hook it injects into the generated Podfile (marked `@react-native-telematics-sdk spm-app-target-fix`). Do not add the package by hand there.
 
 ## Info.plist
 
@@ -78,6 +100,20 @@ The example app also includes Bluetooth usage descriptions and `bluetooth-centra
 ```
 
 Use product-specific permission strings. Do not leave demo text in production apps unless the user explicitly wants it.
+
+## Initialization Contract
+
+`RPEntry.initializeSDK()` in `application(_:didFinishLaunchingWithOptions:)` is mandatory and must be the first SDK call. Omitting it does not degrade quietly: the app crashes at launch with `EXC_BREAKPOINT (SIGTRAP)` inside `RPEntry.instance`'s getter, because the lifecycle forwards touch `RPEntry.instance` before any JS has run.
+
+From plugin `3.1.1`, the JS `TelematicsSdk.initializeSdk()` call also initializes the native iOS SDK when it has not been initialized yet. Treat that as a safety net for JS-side call ordering, not as a replacement for the AppDelegate call — JS starts too late to prevent the launch crash.
+
+Every other iOS bridge method is guarded and rejects with error code `SDK_NOT_INITIALIZED` while the SDK is uninitialized:
+
+```text
+SDK_NOT_INITIALIZED: TelematicsSDK is not initialized. Call initializeSdk() before using this method.
+```
+
+`isInitializedSdk()` is not guarded and is safe to call first when diagnosing.
 
 ## AppDelegate
 
@@ -169,6 +205,8 @@ func applicationDidBecomeActive(_ application: UIApplication) {
 
 ## SceneDelegate
 
+iOS 26 and newer terminate an app built against the iOS 26 or newer SDK that has not adopted the UIScene lifecycle. Once an app is scene-based, iOS stops delivering `applicationDidBecomeActive`, `applicationWillEnterForeground`, and `applicationDidEnterBackground`, so the scene forwards are the only ones that run. Detect which case applies by checking for a `SceneDelegate.swift` file or a `UIApplicationSceneManifest` entry in `Info.plist`, and add exactly one of the two forward sets.
+
 For scene-based apps, forward scene lifecycle in `SceneDelegate`:
 
 ```swift
@@ -192,7 +230,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 ```
 
-Do not forward both scene and non-scene foreground/background methods for the same lifecycle path unless the app intentionally uses both.
+Do not forward both scene and non-scene foreground/background methods for the same lifecycle path. On an Expo project, the config plugin performs this detection and adds exactly one set; on Expo SDK 57 with the scene lifecycle opted in, it stops `expo prebuild` with an explanatory error until the app supplies a `SceneDelegate.swift` — see `../react-native/expo-config-plugin.md`.
 
 ## iOS-Specific JS Calls
 
@@ -209,13 +247,26 @@ iOS-only APIs include permission requests, wrong accuracy state, API language, a
 
 ## Validation
 
-After iOS changes, run:
+After iOS changes in a bare React Native app, run:
 
 ```bash
 yarn install
 yarn typescript
 cd ios && pod install
 npx react-native run-ios
+```
+
+On an Expo CNG project, run instead:
+
+```bash
+npx expo prebuild --clean
+npx expo run:ios
+```
+
+Then confirm the SDK is actually live before debugging anything else:
+
+```ts
+const initialized = await TelematicsSdk.isInitializedSdk();
 ```
 
 If CocoaPods or Xcode signing is not available, explain the limitation and still run TypeScript/lint checks plus a syntax-level review of `Info.plist`, `Podfile`, `AppDelegate`, and `SceneDelegate`.

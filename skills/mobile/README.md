@@ -10,7 +10,7 @@ mobile applications.
 | [Android Telematics SDK Integration](android-telematics-sdk-integration-skill/) | Integrating, migrating, reviewing, or debugging native Android Kotlin apps. |
 | [iOS Telematics SDK Integration](ios-telematics-sdk-integration-skill/) | Integrating, migrating, reviewing, or debugging iOS apps. |
 | [Flutter Telematics SDK Integration](flutter-telematics-sdk-integration-skill/) | Integrating Flutter apps, including Android and iOS host setup. |
-| [React Native Telematics SDK Integration](react-native-telematics-sdk-integration-skill/) | Integrating React Native apps, including Android and iOS host setup. |
+| [React Native Telematics SDK Integration](react-native-telematics-sdk-integration-skill/) | Integrating React Native apps, both Expo (CNG / config plugin) and bare React Native, including Android and iOS host setup. |
 
 ## Shared References
 
